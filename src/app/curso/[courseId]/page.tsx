@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useAttendance } from "@/lib/hooks/useAttendance";
 import { AttendanceRecord, Course } from "@/types";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { AlertCircle, CheckCircle2, Clock, Users, ChevronDown, ChevronUp } from "lucide-react";
 
-export default function CourseAttendancePage({ params }: { params: { courseId: string } }) {
-  const { courseId } = params;
+export default function CourseAttendancePage({ params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = use(params);
   
   // Get local date in YYYY-MM-DD
   const today = new Date().toLocaleDateString("en-CA");
