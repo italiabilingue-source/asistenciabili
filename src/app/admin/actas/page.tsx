@@ -41,59 +41,63 @@ export default function AdminActasPage() {
     const fetchData = async () => {
       setLoading(true);
 
-      // 1. Students
-      const studSnap = await getDocs(collection(db, "students"));
-      const allStud = studSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student));
-      const courseStudents = allStud
-        .filter(s => s.courseId === selectedCourse)
-        .sort((a, b) => {
-          const lastComp = (a.lastName || "").trim().localeCompare((b.lastName || "").trim(), "es", { sensitivity: "base" });
-          if (lastComp !== 0) return lastComp;
-          return (a.firstName || "").trim().localeCompare((b.firstName || "").trim(), "es", { sensitivity: "base" });
-        });
-      setStudents(courseStudents);
-
-      // 2. Daily Attendance
-      const attDocId = `${selectedCourse}_${date}`;
-      const attSnap = await getDoc(doc(db, "daily_attendance", attDocId));
-      if (attSnap.exists()) {
-        setAttendance(attSnap.data() as DailyAttendance);
-      } else {
-        setAttendance(null);
-      }
-
-      // 3. Daily Acta (Hourly Signatures)
-      const actaDocId = `${selectedCourse}_${date}`;
       try {
-        const actaSnap = await getDoc(doc(db, "daily_actas", actaDocId));
-        if (actaSnap.exists()) {
-          setActa(actaSnap.data() as DailyActa);
-        } else if (attSnap.exists() && attSnap.data().signatures) {
-          setActa({
-            courseId: selectedCourse,
-            date,
-            dayOfWeek: getDayOfWeekFromDate(date),
-            signatures: attSnap.data().signatures,
-            updatedAt: attSnap.data().updatedAt || Date.now()
+        // 1. Students
+        const studSnap = await getDocs(collection(db, "students"));
+        const allStud = studSnap.docs.map(d => ({ id: d.id, ...d.data() } as Student));
+        const courseStudents = allStud
+          .filter(s => s.courseId === selectedCourse)
+          .sort((a, b) => {
+            const lastComp = (a.lastName || "").trim().localeCompare((b.lastName || "").trim(), "es", { sensitivity: "base" });
+            if (lastComp !== 0) return lastComp;
+            return (a.firstName || "").trim().localeCompare((b.firstName || "").trim(), "es", { sensitivity: "base" });
           });
-        } else {
-          setActa(null);
-        }
-      } catch (actaErr) {
-        if (attSnap.exists() && attSnap.data().signatures) {
-          setActa({
-            courseId: selectedCourse,
-            date,
-            dayOfWeek: getDayOfWeekFromDate(date),
-            signatures: attSnap.data().signatures,
-            updatedAt: attSnap.data().updatedAt || Date.now()
-          });
-        } else {
-          setActa(null);
-        }
-      }
+        setStudents(courseStudents);
 
-      setLoading(false);
+        // 2. Daily Attendance
+        const attDocId = `${selectedCourse}_${date}`;
+        const attSnap = await getDoc(doc(db, "daily_attendance", attDocId));
+        if (attSnap.exists()) {
+          setAttendance(attSnap.data() as DailyAttendance);
+        } else {
+          setAttendance(null);
+        }
+
+        // 3. Daily Acta (Hourly Signatures)
+        const actaDocId = `${selectedCourse}_${date}`;
+        try {
+          const actaSnap = await getDoc(doc(db, "daily_actas", actaDocId));
+          if (actaSnap.exists()) {
+            setActa(actaSnap.data() as DailyActa);
+          } else if (attSnap.exists() && attSnap.data().signatures) {
+            setActa({
+              courseId: selectedCourse,
+              date,
+              dayOfWeek: getDayOfWeekFromDate(date),
+              signatures: attSnap.data().signatures,
+              updatedAt: attSnap.data().updatedAt || Date.now()
+            });
+          } else {
+            setActa(null);
+          }
+        } catch (actaErr) {
+          if (attSnap.exists() && attSnap.data().signatures) {
+            setActa({
+              courseId: selectedCourse,
+              date,
+              dayOfWeek: getDayOfWeekFromDate(date),
+              signatures: attSnap.data().signatures,
+              updatedAt: attSnap.data().updatedAt || Date.now()
+            });
+          } else {
+            setActa(null);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading actas data:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
@@ -209,20 +213,13 @@ export default function AdminActasPage() {
             {/* Header with Institution Logo / Flags */}
             <div className="border-b-2 border-black pb-3 mb-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-400 flex items-center justify-center flex-shrink-0">
-                    <div className="w-1/3 h-full bg-[#199A46]"></div>
-                    <div className="w-1/3 h-full bg-white"></div>
-                    <div className="w-1/3 h-full bg-[#CE2B37]"></div>
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-black uppercase tracking-wider leading-tight">
-                      Instituto República de Italia D-201
-                    </h1>
-                    <p className="text-xs uppercase font-semibold text-gray-700">
-                      Nivel Secundario • Preceptoría
-                    </p>
-                  </div>
+                <div>
+                  <h1 className="text-xl font-black uppercase tracking-wider leading-tight">
+                    Instituto República de Italia
+                  </h1>
+                  <p className="text-xs uppercase font-semibold text-gray-700">
+                    Nivel Secundario • Preceptoría
+                  </p>
                 </div>
 
                 <div className="text-right">
