@@ -35,7 +35,6 @@ export interface DailyAttendance {
 export interface Teacher {
   id: string;
   name: string;
-  dni?: string;
   pin: string; // 4 dígitos para firma personal
   active: boolean;
 }

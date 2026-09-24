@@ -8,12 +8,12 @@ import { AdminSidebar } from "@/components/AdminSidebar";
 import { Plus, Trash2, Edit2, X, Search, Key, GraduationCap, CheckCircle2 } from "lucide-react";
 
 const INITIAL_SAMPLE_TEACHERS = [
-  { name: "Martínez, Juan Carlos", dni: "28.450.120", pin: "1234", active: true },
-  { name: "González, Silvina", dni: "31.220.890", pin: "2345", active: true },
-  { name: "Rodríguez, Fernando", dni: "29.780.440", pin: "3456", active: true },
-  { name: "Rossi, Mariela", dni: "33.150.770", pin: "4567", active: true },
-  { name: "Albornoz, Esteban", dni: "26.900.310", pin: "5678", active: true },
-  { name: "Pérez, Luciana", dni: "34.600.820", pin: "6789", active: true },
+  { name: "Martínez, Juan Carlos", pin: "1234", active: true },
+  { name: "González, Silvina", pin: "2345", active: true },
+  { name: "Rodríguez, Fernando", pin: "3456", active: true },
+  { name: "Rossi, Mariela", pin: "4567", active: true },
+  { name: "Albornoz, Esteban", pin: "5678", active: true },
+  { name: "Pérez, Luciana", pin: "6789", active: true },
 ];
 
 export default function AdminTeachersPage() {
@@ -25,16 +25,20 @@ export default function AdminTeachersPage() {
 
   // Form State
   const [name, setName] = useState("");
-  const [dni, setDni] = useState("");
   const [pin, setPin] = useState("");
 
   const fetchTeachers = async () => {
     setLoading(true);
-    const snap = await getDocs(collection(db, "teachers"));
-    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Teacher));
-    list.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-    setTeachers(list);
-    setLoading(false);
+    try {
+      const snap = await getDocs(collection(db, "teachers"));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Teacher));
+      list.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+      setTeachers(list);
+    } catch (err) {
+      console.error("Error fetching teachers:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -55,33 +59,40 @@ export default function AdminTeachersPage() {
 
     const payload = {
       name: name.trim(),
-      dni: dni.trim(),
       pin: pin.trim(),
       active: true,
     };
 
-    if (editingId) {
-      await updateDoc(doc(db, "teachers", editingId), payload);
-    } else {
-      await addDoc(collection(db, "teachers"), payload);
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, "teachers", editingId), payload);
+      } else {
+        await addDoc(collection(db, "teachers"), payload);
+      }
+      setShowModal(false);
+      resetForm();
+      fetchTeachers();
+    } catch (err) {
+      console.error("Error saving teacher:", err);
+      alert("Error al guardar el docente. Verifica los permisos de Firebase.");
     }
-
-    setShowModal(false);
-    resetForm();
-    fetchTeachers();
   };
 
   const handleDelete = async (id: string, teacherName: string) => {
     if (confirm(`¿Estás seguro de eliminar al docente "${teacherName}"?`)) {
-      await deleteDoc(doc(db, "teachers", id));
-      fetchTeachers();
+      try {
+        await deleteDoc(doc(db, "teachers", id));
+        fetchTeachers();
+      } catch (err) {
+        console.error("Error deleting teacher:", err);
+        alert("Error al eliminar el docente.");
+      }
     }
   };
 
   const handleEdit = (teacher: Teacher) => {
     setEditingId(teacher.id);
     setName(teacher.name);
-    setDni(teacher.dni || "");
     setPin(teacher.pin);
     setShowModal(true);
   };
@@ -89,23 +100,28 @@ export default function AdminTeachersPage() {
   const resetForm = () => {
     setEditingId(null);
     setName("");
-    setDni("");
     setPin("");
   };
 
   const seedSampleTeachers = async () => {
     if (confirm("¿Cargar docentes iniciales de ejemplo para comenzar a usar la firma digital?")) {
       setLoading(true);
-      for (const t of INITIAL_SAMPLE_TEACHERS) {
-        await addDoc(collection(db, "teachers"), t);
+      try {
+        for (const t of INITIAL_SAMPLE_TEACHERS) {
+          await addDoc(collection(db, "teachers"), t);
+        }
+        fetchTeachers();
+      } catch (err) {
+        console.error("Error seeding sample teachers:", err);
+        alert("Error al cargar docentes de ejemplo.");
+      } finally {
+        setLoading(false);
       }
-      fetchTeachers();
     }
   };
 
   const filteredTeachers = teachers.filter(t => 
-    t.name.toLowerCase().includes(search.toLowerCase()) || 
-    (t.dni && t.dni.toLowerCase().includes(search.toLowerCase()))
+    t.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -141,7 +157,7 @@ export default function AdminTeachersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input 
               type="text" 
-              placeholder="Buscar por apellido, nombre o DNI..." 
+              placeholder="Buscar por apellido o nombre..." 
               value={search} 
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-500"
@@ -177,7 +193,6 @@ export default function AdminTeachersPage() {
               <thead>
                 <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
                   <th className="p-4 pl-6 font-semibold">Apellido y Nombre</th>
-                  <th className="p-4 font-semibold">DNI</th>
                   <th className="p-4 font-semibold">PIN de Firma</th>
                   <th className="p-4 font-semibold">Estado</th>
                   <th className="p-4 pr-6 text-right font-semibold">Acciones</th>
@@ -188,9 +203,6 @@ export default function AdminTeachersPage() {
                   <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                     <td className="p-4 pl-6 font-bold text-gray-900">
                       {t.name}
-                    </td>
-                    <td className="p-4 text-gray-600 text-sm">
-                      {t.dni || "—"}
                     </td>
                     <td className="p-4">
                       <span className="inline-flex items-center bg-gray-100 text-gray-800 text-xs font-mono font-bold px-2.5 py-1 rounded-md border border-gray-200">
@@ -259,19 +271,6 @@ export default function AdminTeachersPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    DNI (opcional)
-                  </label>
-                  <input 
-                    type="text" 
-                    value={dni} 
-                    onChange={e => setDni(e.target.value)} 
-                    placeholder="Ej. 30.123.456" 
-                    className="w-full border border-gray-300 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
                     PIN Personal de Firma (4 dígitos) *
                   </label>
                   <input 
@@ -291,7 +290,7 @@ export default function AdminTeachersPage() {
 
                 <div className="flex justify-end gap-3 pt-4 border-t mt-6">
                   <button 
-                    type="button" 
+                    type="button"
                     onClick={() => setShowModal(false)}
                     className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-medium"
                   >
