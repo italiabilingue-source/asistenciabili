@@ -86,12 +86,18 @@ export default function AdminStudentsPage() {
     setLastName("");
   };
 
-  const filteredStudents = students.filter(s => {
-    const matchCourse = selectedCourseFilter === "all" || s.courseId === selectedCourseFilter;
-    const matchSearch = s.firstName.toLowerCase().includes(search.toLowerCase()) || 
-                        s.lastName.toLowerCase().includes(search.toLowerCase());
-    return matchCourse && matchSearch;
-  });
+  const filteredStudents = students
+    .filter(s => {
+      const matchCourse = selectedCourseFilter === "all" || s.courseId === selectedCourseFilter;
+      const matchSearch = (s.firstName || "").toLowerCase().includes(search.toLowerCase()) || 
+                          (s.lastName || "").toLowerCase().includes(search.toLowerCase());
+      return matchCourse && matchSearch;
+    })
+    .sort((a, b) => {
+      const lastComp = (a.lastName || "").trim().localeCompare((b.lastName || "").trim(), "es", { sensitivity: "base" });
+      if (lastComp !== 0) return lastComp;
+      return (a.firstName || "").trim().localeCompare((b.firstName || "").trim(), "es", { sensitivity: "base" });
+    });
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">

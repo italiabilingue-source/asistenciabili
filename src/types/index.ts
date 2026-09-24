@@ -18,7 +18,10 @@ export type AttendanceStatus = "presente" | "ausente" | "tardanza" | "retirado";
 export interface AttendanceRecord {
   studentId: string;
   status: AttendanceStatus;
-  note?: string; // Optional note
+  note?: string; // Optional note / generic note
+  reason?: string; // Motivo de la ausencia, tardanza o retirada
+  returnsLater?: boolean; // ¿Vuelve más tarde? (para retirados)
+  returnTime?: string; // Hora estimada o aclaración de regreso si vuelve más tarde
 }
 
 export interface DailyAttendance {
