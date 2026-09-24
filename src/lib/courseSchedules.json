@@ -1,0 +1,370 @@
+{
+  "1to": {
+    "courseName": "1°",
+    "days": {
+      "LUNES": [
+        "FORM. ETICA Y CIUD.",
+        "FORM. ETICA Y CIUD.",
+        "MATEMATICA",
+        "MATEMATICA",
+        "LENGUA",
+        "LENGUA",
+        "MUSICA",
+        "MUSICA",
+        "FÍSICA Y QUÍMICA",
+        "FÍSICA Y QUÍMICA"
+      ],
+      "MARTES": [
+        "INGLÉS",
+        "INGLÉS",
+        "MATEMATICA",
+        "MATEMATICA",
+        "LENGUA",
+        "LENGUA",
+        "ITALIANO",
+        "ITALIANO",
+        "ED FISICA",
+        "ED FISICA"
+      ],
+      "MIERCOLES": [
+        "FISICO-QUIMICA",
+        "HISTORIA",
+        "TUTORIA",
+        "TUTORIA",
+        "GEOGRAFIA",
+        "GEOGRAFIA",
+        "ARTES VISUALES",
+        "ARTES VISUALES",
+        "INGLES",
+        "BIOLOGÍA"
+      ],
+      "JUEVES": [
+        "LENGUA",
+        "LENGUA",
+        "HISTORIA",
+        "HISTORIA",
+        "MATEMATICA",
+        "GEOGRAFIA",
+        "ED FISICA",
+        "ED FISICA"
+      ],
+      "VIERNES": [
+        "MATEMATICA",
+        "MATEMATICA",
+        "ED. TECNOLÓGICA",
+        "ED. TECNOLÓGICA",
+        "BIOLOGIA",
+        "BIOLOGIA",
+        "ITALIANO",
+        "ITALIANO"
+      ]
+    }
+  },
+  "2to": {
+    "courseName": "2°",
+    "days": {
+      "LUNES": [
+        "FISICO-QUIMICA",
+        "FISICO-QUIMICA",
+        "FORMACION ET Y CIUD",
+        "FORMACION ET Y CIUD",
+        "ED. TECN (INFORM)",
+        "ED. TECN (INFORM)",
+        "LENGUA",
+        "LENGUA",
+        "MUSICA",
+        "MUSICA"
+      ],
+      "MARTES": [
+        "ITALIANO",
+        "ITALIANO",
+        "INGLES",
+        "INGLES",
+        "MATEMATICA",
+        "MATEMATICA",
+        "LENGUA",
+        "LENGUA"
+      ],
+      "MIERCOLES": [
+        "TUTORIA",
+        "TUTORIA",
+        "GEOGRAFIA",
+        "GEOGRAFIA",
+        "HISTORIA",
+        "HISTORIA",
+        "INGLES",
+        "BIOLOGIA",
+        "ARTES VISUALES",
+        "ARTES VISUALES"
+      ],
+      "JUEVES": [
+        "MATEMATICA",
+        "MATEMATICA",
+        "TUTORIA DISCIPLINAR (LENGUA)",
+        "LENGUA",
+        "ITALIANO",
+        "ITALIANO",
+        "GEOGRAFIA",
+        "HISTORIA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "VIERNES": [
+        "BIOLOGIA",
+        "BIOLOGIA",
+        "MATEMATICA",
+        "MATEMATICA",
+        "ED.TECNOLOGICA",
+        "ED.TECNOLOGICA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ]
+    }
+  },
+  "3to": {
+    "courseName": "3°",
+    "days": {
+      "LUNES": [
+        "MATEMATICA",
+        "MATEMATICA",
+        "LENGUA",
+        "LENGUA",
+        "ARTES VISUALES",
+        "ARTES VISUALES",
+        "FISICO-QUIMICA",
+        "FISICO-QUIMICA",
+        "ED. TECN (INFORM)",
+        "ED. TECN (INFORM)"
+      ],
+      "MARTES": [
+        "MATEMATICA",
+        "MATEMATICA",
+        "TUTORIA (LENGUA)",
+        "LENGUA",
+        "INGLES",
+        "INGLES",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "MIERCOLES": [
+        "ITALIANO",
+        "ITALIANO",
+        "HISTORIA",
+        "HISTORIA",
+        "TUTORIA",
+        "TUTORIA",
+        "BIOLOGIA",
+        "INGLES",
+        "MUSICA",
+        "MUSICA"
+      ],
+      "JUEVES": [
+        "ITALIANO",
+        "ITALIANO",
+        "MATEMATICA",
+        "MATEMATICA",
+        "FORMACION ETICA",
+        "FORMACION ETICA",
+        "HISTORIA",
+        "GEOGRAFIA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "VIERNES": [
+        "ED.TECNOLOGIA",
+        "ED.TECNOLOGIA",
+        "GEOGRAFIA",
+        "GEOGRAFIA",
+        "LENGUA",
+        "LENGUA",
+        "BIOLOGIA",
+        "BIOLOGIA"
+      ]
+    }
+  },
+  "4to": {
+    "courseName": "4°",
+    "days": {
+      "LUNES": [
+        "FISICA",
+        "FISICA",
+        "ARTES VISUALES",
+        "ARTES VISUALES",
+        "LENGUA",
+        "LENGUA",
+        "HISTORIA",
+        "HISTORIA",
+        "INGLES",
+        "INGLES"
+      ],
+      "MARTES": [
+        "LENGUA",
+        "LENGUA",
+        "ITALIANO",
+        "ITALIANO",
+        "PSICOLOGIA",
+        "LENGUA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "MIERCOLES": [
+        "QUIMICA",
+        "QUIMICA",
+        "ITALIANO",
+        "ITALIANO",
+        "MATEMATICA",
+        "MATEMATICA",
+        "ECONOMIA",
+        "ECONOMIA",
+        "INGLES",
+        "INGLES"
+      ],
+      "JUEVES": [
+        "FISICA",
+        "FISICA",
+        "BIOLOGIA",
+        "BIOLOGIA",
+        "MATEMATICA",
+        "MATEMATICA",
+        "MUSICA",
+        "MUSICA"
+      ],
+      "VIERNES": [
+        "FORMACION ETICA",
+        "FORMACION ETICA",
+        "PSICOLOGIA",
+        "PSICOLOGIA",
+        "GEOGRAFIA",
+        "GEOGRAFIA",
+        "MATEMATICA",
+        "QUIMICA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ]
+    }
+  },
+  "5to": {
+    "courseName": "5°",
+    "days": {
+      "LUNES": [
+        "QUIMICA",
+        "QUIMICA",
+        "LITERATURA",
+        "LITERATURA",
+        "FISICA",
+        "FISICA",
+        "TIC´S",
+        "TIC´S",
+        "INGLES",
+        "INGLES"
+      ],
+      "MARTES": [
+        "QUIMICA",
+        "FILOSOFIA",
+        "FILOSOFIA",
+        "FILOSOFIA",
+        "ITALIANO",
+        "ITALIANO",
+        "MATEMATICA",
+        "MATEMATICA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "MIERCOLES": [
+        "HISTORIA",
+        "CS. DE LA TIERRA",
+        "MATEMATICA",
+        "MATEMATICA",
+        "LITERATURA",
+        "LITERATURA",
+        "GEOGRAFIA",
+        "GEOGRAFIA",
+        "INGLES",
+        "INGLES"
+      ],
+      "JUEVES": [
+        "HISTORIA",
+        "HISTORIA",
+        "ITALIANO",
+        "ITALIANO",
+        "FISICA",
+        "FISICA",
+        "BIOLOGIA",
+        "BIOLOGIA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "VIERNES": [
+        "BIOLOGIA",
+        "BIOLOGIA",
+        "FORMACION ETICA",
+        "FORMACION ETICA",
+        "MATEMATICA",
+        "MATEMATICA",
+        "CS. DE LA TIERRA",
+        "CS. DE LA TIERRA"
+      ]
+    }
+  },
+  "6to": {
+    "courseName": "6°",
+    "days": {
+      "LUNES": [
+        "LITERATURA",
+        "LITERATURA",
+        "FISICA",
+        "FISICA",
+        "HISTORIA",
+        "HISTORIA",
+        "ITALIANO",
+        "ITALIANO",
+        "INGLES",
+        "INGLES"
+      ],
+      "MARTES": [
+        "ECOLOGIA",
+        "ECOLOGIA",
+        "IICSN",
+        "IICSN",
+        "MATEMATICA",
+        "MATEMATICA",
+        "QUIMICA",
+        "QUIMICA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ],
+      "MIERCOLES": [
+        "QUIMICA",
+        "QUIMICA",
+        "LITERATURA",
+        "LITERATURA",
+        "ITALIANO",
+        "ITALIANO",
+        "MATEMATICA",
+        "MATEMATICA",
+        "INGLES",
+        "INGLES"
+      ],
+      "JUEVES": [
+        "ECOLOGIA",
+        "IICSN",
+        "FISICA",
+        "FISICA",
+        "BIOLOGIA",
+        "BIOLOGIA",
+        "P EDUCATIVA",
+        "P EDUCATIVA"
+      ],
+      "VIERNES": [
+        "GEOGRAFIA",
+        "GEOGRAFIA",
+        "PRAC EDUC (MATEM)",
+        "PRAC EDUC (MATEM)",
+        "FORMACION ETICA",
+        "FORMACION ETICA",
+        "ED. FÍSICA",
+        "ED. FÍSICA"
+      ]
+    }
+  }
+}

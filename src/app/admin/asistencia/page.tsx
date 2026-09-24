@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Course, Student, DailyAttendance, AttendanceRecord, AttendanceStatus } from "@/types";
-import { Check, X, Clock, Save, Plus, LogOut, Users, AlertCircle, ArrowRightLeft, Sparkles } from "lucide-react";
+import { Check, X, Clock, Save, Plus, LogOut, Users, AlertCircle, ArrowRightLeft, Sparkles, Printer, FileSpreadsheet } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import Link from "next/link";
 
 const COMMON_ABSENCE_REASONS = [
   "Enfermedad",
@@ -238,7 +239,7 @@ export default function AdminAttendancePage() {
             <p className="text-gray-500">Carga rápida de inasistencias, tardanzas y retiros anticipados</p>
           </div>
           
-          <div className="flex gap-4 w-full md:w-auto">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <select 
               value={selectedCourse} 
               onChange={e => setSelectedCourse(e.target.value)}
@@ -254,6 +255,14 @@ export default function AdminAttendancePage() {
               onChange={e => setDate(e.target.value)}
               className="flex-1 md:w-44 bg-white border border-gray-300 text-gray-900 font-medium rounded-xl px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
             />
+            <Link
+              href="/admin/actas"
+              className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center text-sm"
+              title="Ver e imprimir acta diaria oficial"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-1.5 text-green-600" />
+              Ver Acta Imprimible
+            </Link>
           </div>
         </div>
 
@@ -563,23 +572,32 @@ export default function AdminAttendancePage() {
               })}
             </ul>
             
-            {/* Footer with save button */}
+            {/* Footer with save button & print link */}
             <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3">
               <p className="text-xs text-gray-500 text-center sm:text-left">
                 Los cambios se reflejarán instantáneamente en la pantalla del aula al guardar.
               </p>
-              <button 
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full sm:w-auto bg-[#199A46] hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center disabled:opacity-50"
-              >
-                {saving ? (
-                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                ) : (
-                  <Save className="w-5 h-5 mr-2" />
-                )}
-                {saving ? "Guardando..." : "Guardar Parte Diario"}
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                <Link
+                  href="/admin/actas"
+                  className="w-full sm:w-auto bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 font-bold px-5 py-3 rounded-xl shadow-sm transition-all flex items-center justify-center text-sm"
+                >
+                  <Printer className="w-4 h-4 mr-2 text-gray-600" />
+                  Ver e Imprimir Acta
+                </Link>
+                <button 
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="w-full sm:w-auto bg-[#199A46] hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center disabled:opacity-50"
+                >
+                  {saving ? (
+                    <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                  ) : (
+                    <Save className="w-5 h-5 mr-2" />
+                  )}
+                  {saving ? "Guardando..." : "Guardar Parte Diario"}
+                </button>
+              </div>
             </div>
           </div>
         )}

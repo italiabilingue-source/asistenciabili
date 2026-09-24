@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, Settings, Users, LogOut } from "lucide-react";
+import { Check, Settings, Users, LogOut, FileSpreadsheet, GraduationCap, QrCode } from "lucide-react";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -36,17 +36,34 @@ export function AdminSidebar() {
           <Check className={`w-5 h-5 ${pathname === '/admin/asistencia' ? 'text-green-400' : ''}`} />
           <span className="font-medium">Tomar Lista</span>
         </Link>
+
+        <Link 
+          href="/admin/actas" 
+          className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/admin/actas' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+        >
+          <FileSpreadsheet className={`w-5 h-5 ${pathname === '/admin/actas' ? 'text-green-400' : ''}`} />
+          <span className="font-medium">Actas e Impresión</span>
+        </Link>
+
         <Link 
           href="/admin/qr" 
           className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/admin/qr' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
         >
-          <div className="w-5 h-5 border-2 border-current rounded-sm"></div>
-          <span className="font-medium">Códigos QR</span>
+          <QrCode className={`w-5 h-5 ${pathname === '/admin/qr' ? 'text-green-400' : ''}`} />
+          <span className="font-medium">Carteles QR</span>
         </Link>
         
         <div className="pt-6 pb-2">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider px-4">Administración</p>
         </div>
+
+        <Link 
+          href="/admin/docentes" 
+          className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/admin/docentes' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+        >
+          <GraduationCap className={`w-5 h-5 ${pathname === '/admin/docentes' ? 'text-green-400' : ''}`} />
+          <span className="font-medium">Gestionar Docentes</span>
+        </Link>
         
         <Link 
           href="/admin/cursos" 
@@ -55,6 +72,7 @@ export function AdminSidebar() {
           <Settings className={`w-5 h-5 ${pathname === '/admin/cursos' ? 'text-green-400' : ''}`} />
           <span className="font-medium">Gestionar Cursos</span>
         </Link>
+
         <Link 
           href="/admin/alumnos" 
           className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${pathname === '/admin/alumnos' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
