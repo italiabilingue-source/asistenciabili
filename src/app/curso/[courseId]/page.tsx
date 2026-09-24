@@ -266,88 +266,8 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
       <div className="p-4 max-w-4xl mx-auto space-y-6">
         
         {/* ==============================================================
-            ACTA DE CLASES Y FIRMA DOCENTE (NEW FEATURE)
-           ============================================================== */}
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 overflow-hidden">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
-                <PenTool className="w-5 h-5 text-green-600" />
-                Acta de Clases y Firma de Profesores
-              </h2>
-              <p className="text-xs text-gray-500">
-                Firma de asistencia por módulo/hora mediante PIN personal de docente
-              </p>
-            </div>
-            <span className="text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
-              {subjectsToday.length} Módulos hoy
-            </span>
-          </div>
-
-          {subjectsToday.length === 0 ? (
-            <p className="text-sm text-gray-500 italic py-4 text-center">
-              No hay materias cargadas para el día {dayOfWeek}.
-            </p>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {subjectsToday.map((subject, idx) => {
-                const hourTime = DEFAULT_MODULE_TIMES[idx]?.time || "";
-                const sig = signatures[idx];
-                const isSigned = sig?.signed;
-
-                return (
-                  <div 
-                    key={idx} 
-                    className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/80 px-2 rounded-xl transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 text-center flex-shrink-0 bg-gray-100 rounded-lg py-1 px-1.5">
-                        <span className="block text-xs font-black text-gray-800">{idx + 1}ª Hora</span>
-                        {hourTime && <span className="block text-[9px] text-gray-500 leading-none">{hourTime}</span>}
-                      </div>
-
-                      <div>
-                        <h4 className="font-bold text-gray-900 text-sm sm:text-base uppercase tracking-tight">
-                          {subject}
-                        </h4>
-                        {isSigned && (
-                          <p className="text-xs text-emerald-700 font-medium flex items-center gap-1 mt-0.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            Firmado por {sig.teacherName} a las{" "}
-                            {sig.signedAt
-                              ? new Date(sig.signedAt).toLocaleTimeString("es-AR", {
-                                  hour: "2-digit",
-                                  minute: "2-digit"
-                                }) + " hs"
-                              : ""}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="self-end sm:self-auto">
-                      {isSigned ? (
-                        <div className="flex items-center bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-                          <Check className="w-4 h-4 mr-1.5 text-emerald-600" /> Firmado
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => openSignModal(idx)}
-                          className="bg-[#199A46] hover:bg-green-700 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-sm hover:shadow transition-all flex items-center active:scale-95"
-                        >
-                          <Key className="w-3.5 h-3.5 mr-1.5" /> Firmar mi Hora
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* ==============================================================
             PARTE DIARIO DE ASISTENCIA (AUSENTES, TARDES, RETIROS)
+            (Placed at the top as the primary view for teachers)
            ============================================================== */}
         {!attendance ? (
           <div className="text-center p-8 bg-white rounded-2xl border border-gray-200 shadow-sm">
@@ -497,6 +417,87 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
             )}
           </>
         )}
+
+        {/* ==============================================================
+            ACTA DE CLASES Y FIRMA DOCENTE (Placed below attendance)
+           ============================================================== */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-5 overflow-hidden">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                <PenTool className="w-5 h-5 text-green-600" />
+                Acta de Clases y Firma de Profesores
+              </h2>
+              <p className="text-xs text-gray-500">
+                Firma de asistencia por módulo/hora mediante PIN personal de docente
+              </p>
+            </div>
+            <span className="text-xs font-semibold bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
+              {subjectsToday.length} Módulos hoy
+            </span>
+          </div>
+
+          {subjectsToday.length === 0 ? (
+            <p className="text-sm text-gray-500 italic py-4 text-center">
+              No hay materias cargadas para el día {dayOfWeek}.
+            </p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {subjectsToday.map((subject, idx) => {
+                const hourTime = DEFAULT_MODULE_TIMES[idx]?.time || "";
+                const sig = signatures[idx];
+                const isSigned = sig?.signed;
+
+                return (
+                  <div 
+                    key={idx} 
+                    className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/80 px-2 rounded-xl transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 text-center flex-shrink-0 bg-gray-100 rounded-lg py-1 px-1.5">
+                        <span className="block text-xs font-black text-gray-800">{idx + 1}ª Hora</span>
+                        {hourTime && <span className="block text-[9px] text-gray-500 leading-none">{hourTime}</span>}
+                      </div>
+
+                      <div>
+                        <h4 className="font-bold text-gray-900 text-sm sm:text-base uppercase tracking-tight">
+                          {subject}
+                        </h4>
+                        {isSigned && (
+                          <p className="text-xs text-emerald-700 font-medium flex items-center gap-1 mt-0.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            Firmado por {sig.teacherName} a las{" "}
+                            {sig.signedAt
+                              ? new Date(sig.signedAt).toLocaleTimeString("es-AR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                }) + " hs"
+                              : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="self-end sm:self-auto">
+                      {isSigned ? (
+                        <div className="flex items-center bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
+                          <Check className="w-4 h-4 mr-1.5 text-emerald-600" /> Firmado
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => openSignModal(idx)}
+                          className="bg-[#199A46] hover:bg-green-700 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-sm hover:shadow transition-all flex items-center active:scale-95"
+                        >
+                          <Key className="w-3.5 h-3.5 mr-1.5" /> Firmar mi Hora
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* ==============================================================
