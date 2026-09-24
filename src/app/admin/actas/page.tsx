@@ -64,11 +64,33 @@ export default function AdminActasPage() {
 
       // 3. Daily Acta (Hourly Signatures)
       const actaDocId = `${selectedCourse}_${date}`;
-      const actaSnap = await getDoc(doc(db, "daily_actas", actaDocId));
-      if (actaSnap.exists()) {
-        setActa(actaSnap.data() as DailyActa);
-      } else {
-        setActa(null);
+      try {
+        const actaSnap = await getDoc(doc(db, "daily_actas", actaDocId));
+        if (actaSnap.exists()) {
+          setActa(actaSnap.data() as DailyActa);
+        } else if (attSnap.exists() && attSnap.data().signatures) {
+          setActa({
+            courseId: selectedCourse,
+            date,
+            dayOfWeek: getDayOfWeekFromDate(date),
+            signatures: attSnap.data().signatures,
+            updatedAt: attSnap.data().updatedAt || Date.now()
+          });
+        } else {
+          setActa(null);
+        }
+      } catch (actaErr) {
+        if (attSnap.exists() && attSnap.data().signatures) {
+          setActa({
+            courseId: selectedCourse,
+            date,
+            dayOfWeek: getDayOfWeekFromDate(date),
+            signatures: attSnap.data().signatures,
+            updatedAt: attSnap.data().updatedAt || Date.now()
+          });
+        } else {
+          setActa(null);
+        }
       }
 
       setLoading(false);
