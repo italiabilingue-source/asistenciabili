@@ -195,11 +195,25 @@ export default function AdminAttendancePage() {
         computedNote = parts.join(" | ");
       }
 
-      recordsWithNames[studentId] = {
-        ...rec,
+      const cleanRecord: Record<string, any> = {
+        studentId,
+        status: rec.status || "presente",
         studentName: student ? `${student.lastName}, ${student.firstName}` : "Desconocido",
         note: computedNote
       };
+
+      if (rec.reason && rec.reason.trim()) {
+        cleanRecord.reason = rec.reason.trim();
+      }
+
+      if (rec.status === "retirado") {
+        cleanRecord.returnsLater = rec.returnsLater === true;
+        if (rec.returnTime && rec.returnTime.trim()) {
+          cleanRecord.returnTime = rec.returnTime.trim();
+        }
+      }
+
+      recordsWithNames[studentId] = cleanRecord;
     });
 
     const docId = `${selectedCourse}_${date}`;
