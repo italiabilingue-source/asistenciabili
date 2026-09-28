@@ -89,6 +89,11 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState(false);
 
+  // Real-time teacher recognition by PIN
+  const matchedTeacherBySignPin = teacherPin.length === 4 ? teachers.find(t => t.pin === teacherPin) : null;
+  const matchedTeacherByObsPin = obsTeacherPin.length === 4 ? teachers.find(t => t.pin === obsTeacherPin) : null;
+  const matchedTeacherByLinkPin = linkTeacherPin.length === 4 ? teachers.find(t => t.pin === linkTeacherPin) : null;
+
   useEffect(() => {
     // Check if PIN is in sessionStorage
     const storedPin = sessionStorage.getItem(`pin_${courseId}`);
@@ -368,13 +373,9 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   const handleLinkProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setProfileError("");
-    const teacher = teachers.find(t => t.id === linkTeacherId);
+    const teacher = teachers.find(t => t.pin === linkTeacherPin.trim());
     if (!teacher) {
-      setProfileError("Selecciona tu nombre de la lista.");
-      return;
-    }
-    if (linkTeacherPin.trim() !== teacher.pin) {
-      setProfileError("El PIN ingresado es incorrecto.");
+      setProfileError("No encontramos ningún docente registrado con ese PIN de 4 dígitos.");
       return;
     }
 
@@ -507,16 +508,15 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     e.preventDefault();
     if (signingHourIndex === null) return;
 
-    const teacher = savedTeacher || teachers.find(t => t.id === selectedTeacherId);
+    let teacher = savedTeacher;
     if (!teacher) {
-      setSigningError("Selecciona un docente válido.");
-      return;
-    }
-
-    // Only verify PIN if teacher is not already remembered on this device
-    if (!savedTeacher) {
-      if (teacherPin.trim() !== teacher.pin) {
-        setSigningError("El PIN ingresado es incorrecto.");
+      if (!teacherPin.trim()) {
+        setSigningError("Ingresa tu PIN de 4 dígitos.");
+        return;
+      }
+      teacher = teachers.find(t => t.pin === teacherPin.trim()) || null;
+      if (!teacher) {
+        setSigningError("PIN no reconocido. Verifícalo o crea tu perfil si eres un nuevo docente.");
         return;
       }
       if (rememberDevice && typeof window !== "undefined") {
@@ -534,7 +534,7 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     if (savedTeacher) {
       setObsTeacherId(savedTeacher.id);
     } else {
-      setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
+      setObsTeacherId("");
     }
     setObsTeacherPin("");
     setObsText("");
@@ -546,16 +546,15 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     e.preventDefault();
     if (!obsModalStudent) return;
 
-    const teacher = savedTeacher || teachers.find(t => t.id === obsTeacherId);
+    let teacher = savedTeacher;
     if (!teacher) {
-      setObsError("Selecciona un docente válido.");
-      return;
-    }
-
-    // Only verify PIN if teacher is not already remembered on this device
-    if (!savedTeacher) {
-      if (obsTeacherPin.trim() !== teacher.pin) {
-        setObsError("El PIN ingresado es incorrecto.");
+      if (!obsTeacherPin.trim()) {
+        setObsError("Ingresa tu PIN de 4 dígitos.");
+        return;
+      }
+      teacher = teachers.find(t => t.pin === obsTeacherPin.trim()) || null;
+      if (!teacher) {
+        setObsError("PIN no reconocido. Verifícalo o crea tu perfil si eres un nuevo docente.");
         return;
       }
       if (rememberDevice && typeof window !== "undefined") {
@@ -1221,39 +1220,30 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                        O selecciona tu nombre existente:
-                      </label>
-                      <select
-                        value={selectedTeacherId}
-                        onChange={e => setSelectedTeacherId(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-green-500"
-                      >
-                        {teachers.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                        Tu PIN de Firma (4 dígitos):
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 text-center">
+                        Ingresa tu PIN de Docente (4 dígitos):
                       </label>
                       <input
                         type="password"
                         inputMode="numeric"
                         maxLength={4}
                         required
+                        autoFocus
                         value={teacherPin}
                         onChange={e => setTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                         placeholder="••••"
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-center text-3xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        className="w-full bg-gray-50 border-2 border-gray-300 rounded-2xl px-4 py-3 text-center text-3xl font-mono tracking-widest outline-none focus:border-green-600 focus:bg-white transition-all shadow-inner"
                       />
-                      <p className="text-[11px] text-gray-500 mt-1 text-center">
-                        Ingresa tu PIN personal para identificarte.
-                      </p>
+                      {matchedTeacherBySignPin ? (
+                        <div className="mt-2 text-center text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 py-1.5 px-3 rounded-xl animate-in fade-in flex items-center justify-center gap-1.5">
+                          <GraduationCap className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Identificado: <strong>Prof. {matchedTeacherBySignPin.name}</strong></span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-gray-500 mt-1.5 text-center">
+                          Solo ingresa tus 4 números. El sistema sabrá quién eres.
+                        </p>
+                      )}
                     </div>
 
                     <label className="flex items-start gap-2.5 cursor-pointer pt-1 text-xs text-gray-700 select-none">
@@ -1418,39 +1408,30 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                        O selecciona tu nombre existente:
-                      </label>
-                      <select
-                        value={obsTeacherId}
-                        onChange={e => setObsTeacherId(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {teachers.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                        Tu PIN de Docente (4 dígitos):
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 text-center">
+                        Ingresa tu PIN de Docente (4 dígitos):
                       </label>
                       <input
                         type="password"
                         inputMode="numeric"
                         maxLength={4}
                         required
+                        autoFocus
                         value={obsTeacherPin}
                         onChange={e => setObsTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                         placeholder="••••"
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full bg-gray-50 border-2 border-gray-300 rounded-2xl px-4 py-2.5 text-center text-3xl font-mono tracking-widest outline-none focus:border-blue-600 focus:bg-white transition-all shadow-inner"
                       />
-                      <p className="text-[11px] text-gray-500 mt-1 text-center">
-                        Ingresa tu PIN personal para identificarte.
-                      </p>
+                      {matchedTeacherByObsPin ? (
+                        <div className="mt-2 text-center text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200 py-1.5 px-3 rounded-xl animate-in fade-in flex items-center justify-center gap-1.5">
+                          <GraduationCap className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>Identificado: <strong>Prof. {matchedTeacherByObsPin.name}</strong></span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-gray-500 mt-1.5 text-center">
+                          Solo ingresa tus 4 números para registrar la observación.
+                        </p>
+                      )}
                     </div>
 
                     <label className="flex items-start gap-2.5 cursor-pointer pt-1 text-xs text-gray-700 select-none">
@@ -1657,39 +1638,32 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                     </div>
                   </form>
                 ) : (
-                  <form onSubmit={handleLinkProfile} className="space-y-3.5">
+                  <form onSubmit={handleLinkProfile} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
-                        Selecciona tu Nombre:
-                      </label>
-                      <select
-                        value={linkTeacherId}
-                        onChange={e => setLinkTeacherId(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">-- Elige tu nombre --</option>
-                        {teachers.map(t => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
-                        Tu PIN actual (4 dígitos):
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5 text-center">
+                        Ingresa tu PIN de Docente (4 dígitos):
                       </label>
                       <input
                         type="password"
                         inputMode="numeric"
                         maxLength={4}
                         required
+                        autoFocus
                         placeholder="••••"
                         value={linkTeacherPin}
                         onChange={e => setLinkTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-gray-50 border-2 border-gray-300 rounded-2xl px-4 py-3 text-center text-3xl font-mono tracking-widest outline-none focus:border-blue-600 focus:bg-white transition-all shadow-inner"
                       />
+                      {matchedTeacherByLinkPin ? (
+                        <div className="mt-2.5 text-center text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200 py-1.5 px-3 rounded-xl animate-in fade-in flex items-center justify-center gap-1.5">
+                          <GraduationCap className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>¡Hola <strong>Prof. {matchedTeacherByLinkPin.name}</strong>!</span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-gray-400 mt-1.5 text-center">
+                          El sistema te reconocerá automáticamente por tu PIN.
+                        </p>
+                      )}
                     </div>
 
                     {profileError && (
@@ -1708,7 +1682,7 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                       </button>
                       <button
                         type="submit"
-                        disabled={linkingTeacher || !linkTeacherId}
+                        disabled={linkingTeacher || linkTeacherPin.length !== 4}
                         className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
                       >
                         Vincular Celular
