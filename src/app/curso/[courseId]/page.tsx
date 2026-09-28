@@ -21,7 +21,8 @@ import {
   Check, 
   ShieldCheck,
   MessageSquare,
-  MessageSquarePlus
+  MessageSquarePlus,
+  GraduationCap
 } from "lucide-react";
 import { getSubjectsForCourseAndDate, getDayOfWeekFromDate, DEFAULT_MODULE_TIMES } from "@/lib/scheduleHelper";
 
@@ -42,6 +43,10 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinError, setPinError] = useState(false);
   const [showPresent, setShowPresent] = useState(false);
+
+  // Remembered teacher on this device
+  const [savedTeacher, setSavedTeacher] = useState<Teacher | null>(null);
+  const [rememberDevice, setRememberDevice] = useState(true);
 
   // Signing modal state
   const [signingHourIndex, setSigningHourIndex] = useState<number | null>(null);
@@ -110,6 +115,19 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
 
         teachersList.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
         setTeachers(teachersList);
+
+        // Check if there is a saved teacher in localStorage
+        if (typeof window !== "undefined") {
+          const savedId = localStorage.getItem("bili_teacher_id");
+          if (savedId) {
+            const found = teachersList.find(t => t.id === savedId);
+            if (found) {
+              setSavedTeacher(found);
+              setSelectedTeacherId(found.id);
+              setObsTeacherId(found.id);
+            }
+          }
+        }
       } catch (err) {
         console.error("Error loading teachers:", err);
         setTeachers([]);
@@ -156,6 +174,18 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     fetchInitData();
   }, [courseId, today, dayOfWeek]);
 
+  const handleForgetTeacher = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("bili_teacher_id");
+      localStorage.removeItem("bili_teacher_name");
+    }
+    setSavedTeacher(null);
+    setSelectedTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    setTeacherPin("");
+    setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    setObsTeacherPin("");
+  };
+
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (course && pin === course.accessPin) {
@@ -169,7 +199,11 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
 
   const openSignModal = (hourIndex: number) => {
     setSigningHourIndex(hourIndex);
-    setSelectedTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    if (savedTeacher) {
+      setSelectedTeacherId(savedTeacher.id);
+    } else {
+      setSelectedTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    }
     setTeacherPin("");
     setSigningError("");
     setSigningSuccess(false);
@@ -179,15 +213,23 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     e.preventDefault();
     if (signingHourIndex === null) return;
 
-    const teacher = teachers.find(t => t.id === selectedTeacherId);
+    const teacher = savedTeacher || teachers.find(t => t.id === selectedTeacherId);
     if (!teacher) {
       setSigningError("Selecciona un docente válido.");
       return;
     }
 
-    if (teacherPin.trim() !== teacher.pin) {
-      setSigningError("El PIN ingresado es incorrecto.");
-      return;
+    // Only verify PIN if teacher is not already remembered on this device
+    if (!savedTeacher) {
+      if (teacherPin.trim() !== teacher.pin) {
+        setSigningError("El PIN ingresado es incorrecto.");
+        return;
+      }
+      if (rememberDevice && typeof window !== "undefined") {
+        localStorage.setItem("bili_teacher_id", teacher.id);
+        localStorage.setItem("bili_teacher_name", teacher.name);
+        setSavedTeacher(teacher);
+      }
     }
 
     setSavingSignature(true);
@@ -252,7 +294,11 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
 
   const openObsModal = (student: AttendanceRecord & { studentName?: string }) => {
     setObsModalStudent(student);
-    setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    if (savedTeacher) {
+      setObsTeacherId(savedTeacher.id);
+    } else {
+      setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    }
     setObsTeacherPin("");
     setObsText("");
     setObsError("");
@@ -263,15 +309,23 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     e.preventDefault();
     if (!obsModalStudent) return;
 
-    const teacher = teachers.find(t => t.id === obsTeacherId);
+    const teacher = savedTeacher || teachers.find(t => t.id === obsTeacherId);
     if (!teacher) {
       setObsError("Selecciona un docente válido.");
       return;
     }
 
-    if (obsTeacherPin.trim() !== teacher.pin) {
-      setObsError("El PIN ingresado es incorrecto.");
-      return;
+    // Only verify PIN if teacher is not already remembered on this device
+    if (!savedTeacher) {
+      if (obsTeacherPin.trim() !== teacher.pin) {
+        setObsError("El PIN ingresado es incorrecto.");
+        return;
+      }
+      if (rememberDevice && typeof window !== "undefined") {
+        localStorage.setItem("bili_teacher_id", teacher.id);
+        localStorage.setItem("bili_teacher_name", teacher.name);
+        setSavedTeacher(teacher);
+      }
     }
 
     if (!obsText.trim()) {
@@ -425,13 +479,29 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
       {/* Header */}
       <div className="bg-white sticky top-0 z-10 shadow-sm border-b">
         <div className="p-4 flex flex-col gap-2 max-w-4xl mx-auto">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-2">
             <div>
               <h1 className="text-xl font-bold text-gray-800">{course.name}</h1>
               <p className="text-xs text-gray-500 font-medium">Turno {course.shift} • {dayOfWeek}</p>
             </div>
-            <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold">
-              {new Date().toLocaleDateString("es-AR", { day: 'numeric', month: 'short' })}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {savedTeacher && (
+                <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-full text-xs font-semibold shadow-2xs">
+                  <GraduationCap className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span className="truncate max-w-[120px] sm:max-w-[200px]">Prof. {savedTeacher.name}</span>
+                  <button
+                    type="button"
+                    onClick={handleForgetTeacher}
+                    className="text-emerald-700 hover:text-emerald-950 underline text-[10px] ml-0.5 cursor-pointer"
+                    title="Cambiar docente en este celular"
+                  >
+                    (Cambiar)
+                  </button>
+                </div>
+              )}
+              <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">
+                {new Date().toLocaleDateString("es-AR", { day: 'numeric', month: 'short' })}
+              </div>
             </div>
           </div>
           
@@ -778,47 +848,83 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
               </div>
             ) : (
               <form onSubmit={handleConfirmSignature} className="space-y-4">
-                {teachers.length === 0 ? (
+                {savedTeacher ? (
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-1.5">
+                    <p className="text-xs text-emerald-800 font-semibold uppercase tracking-wide">
+                      Firmando como
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                      <GraduationCap className="w-5 h-5 text-emerald-700" />
+                      <span className="text-base font-bold text-emerald-950">
+                        {savedTeacher.name}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      Dispositivo identificado • 1 toque para firmar
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleForgetTeacher}
+                      className="text-xs text-gray-500 hover:text-gray-800 underline pt-1 block mx-auto cursor-pointer"
+                    >
+                      ¿No eres tú? Cambiar docente
+                    </button>
+                  </div>
+                ) : teachers.length === 0 ? (
                   <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200">
                     Aún no hay docentes registrados con PIN en el sistema. Puedes darlos de alta desde el panel de preceptoría.
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                      Selecciona tu Nombre:
-                    </label>
-                    <select
-                      value={selectedTeacherId}
-                      onChange={e => setSelectedTeacherId(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      {teachers.map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                        Selecciona tu Nombre:
+                      </label>
+                      <select
+                        value={selectedTeacherId}
+                        onChange={e => setSelectedTeacherId(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        {teachers.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                    Tu PIN de Firma (4 dígitos):
-                  </label>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    required
-                    value={teacherPin}
-                    onChange={e => setTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    placeholder="••••"
-                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-center text-3xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                  <p className="text-[11px] text-gray-500 mt-1 text-center">
-                    Verifica tu identidad antes de firmar el acta.
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                        Tu PIN de Firma (4 dígitos):
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        required
+                        value={teacherPin}
+                        onChange={e => setTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        placeholder="••••"
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-center text-3xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1 text-center">
+                        Ingresa tu PIN personal para identificarte.
+                      </p>
+                    </div>
+
+                    <label className="flex items-start gap-2.5 cursor-pointer pt-1 text-xs text-gray-700 select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberDevice}
+                        onChange={e => setRememberDevice(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                      />
+                      <span className="font-medium text-gray-800">
+                        Recordarme en este celular <span className="text-gray-500 block text-[11px] font-normal">(no te volverá a pedir buscar tu nombre ni ingresar PIN)</span>
+                      </span>
+                    </label>
+                  </>
+                )}
 
                 {signingError && (
                   <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl text-center">
@@ -830,14 +936,14 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                   <button
                     type="button"
                     onClick={() => setSigningHourIndex(null)}
-                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50"
+                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50 cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    disabled={savingSignature || teachers.length === 0}
-                    className="flex-1 py-2.5 bg-[#199A46] hover:bg-green-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center"
+                    disabled={savingSignature || (!savedTeacher && teachers.length === 0)}
+                    className="flex-1 py-2.5 bg-[#199A46] hover:bg-green-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
                   >
                     {savingSignature ? (
                       <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
@@ -870,7 +976,7 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
               </div>
               <button 
                 onClick={() => setObsModalStudent(null)}
-                className="text-gray-400 hover:text-gray-600 p-1"
+                className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -884,47 +990,78 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
               </div>
             ) : (
               <form onSubmit={handleSaveObservation} className="space-y-4">
-                {teachers.length === 0 ? (
+                {savedTeacher ? (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-blue-700 shrink-0" />
+                      <div>
+                        <span className="text-[11px] text-blue-700 block leading-tight font-medium">Docente:</span>
+                        <span className="text-sm font-bold text-blue-950">Prof. {savedTeacher.name}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleForgetTeacher}
+                      className="text-xs text-blue-700 underline hover:text-blue-900 cursor-pointer"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                ) : teachers.length === 0 ? (
                   <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200">
                     Aún no hay docentes registrados en el sistema.
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                      Docente que registra la observación:
-                    </label>
-                    <select
-                      value={obsTeacherId}
-                      onChange={e => setObsTeacherId(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {teachers.map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                        Docente que registra la observación:
+                      </label>
+                      <select
+                        value={obsTeacherId}
+                        onChange={e => setObsTeacherId(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {teachers.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                    Tu PIN de Docente (4 dígitos):
-                  </label>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    required
-                    value={obsTeacherPin}
-                    onChange={e => setObsTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    placeholder="••••"
-                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="text-[11px] text-gray-500 mt-1 text-center">
-                    Verifica tu PIN personal para firmar la observación.
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                        Tu PIN de Docente (4 dígitos):
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        required
+                        value={obsTeacherPin}
+                        onChange={e => setObsTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        placeholder="••••"
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1 text-center">
+                        Ingresa tu PIN personal para identificarte.
+                      </p>
+                    </div>
+
+                    <label className="flex items-start gap-2.5 cursor-pointer pt-1 text-xs text-gray-700 select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberDevice}
+                        onChange={e => setRememberDevice(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="font-medium text-gray-800">
+                        Recordarme en este celular <span className="text-gray-500 block text-[11px] font-normal">(no te volverá a pedir buscar tu nombre ni ingresar PIN)</span>
+                      </span>
+                    </label>
+                  </>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
@@ -950,14 +1087,14 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                   <button
                     type="button"
                     onClick={() => setObsModalStudent(null)}
-                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50"
+                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50 cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    disabled={savingObs || teachers.length === 0}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center"
+                    disabled={savingObs || (!savedTeacher && teachers.length === 0)}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
                   >
                     {savingObs ? (
                       <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
