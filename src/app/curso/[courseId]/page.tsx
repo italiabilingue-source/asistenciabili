@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useAttendance } from "@/lib/hooks/useAttendance";
 import { AttendanceRecord, Course, Teacher, DailyActa, HourlySignature, StudentObservation } from "@/types";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { 
   AlertCircle, 
@@ -23,7 +23,9 @@ import {
   MessageSquare,
   MessageSquarePlus,
   GraduationCap,
-  Fingerprint
+  Fingerprint,
+  UserPlus,
+  Sparkles
 } from "lucide-react";
 import { getSubjectsForCourseAndDate, getDayOfWeekFromDate, DEFAULT_MODULE_TIMES } from "@/lib/scheduleHelper";
 import { isBiometricsAvailable, registerBiometrics, verifyBiometrics } from "@/lib/webauthn";
@@ -73,6 +75,19 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   const [obsError, setObsError] = useState("");
   const [obsSuccess, setObsSuccess] = useState(false);
   const [savingObs, setSavingObs] = useState(false);
+
+  // Teacher Profile Setup Modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileTab, setProfileTab] = useState<"create" | "link">("create");
+  const [newTeacherName, setNewTeacherName] = useState("");
+  const [newTeacherPin, setNewTeacherPin] = useState("");
+  const [newTeacherPinConfirm, setNewTeacherPinConfirm] = useState("");
+  const [linkTeacherId, setLinkTeacherId] = useState("");
+  const [linkTeacherPin, setLinkTeacherPin] = useState("");
+  const [creatingTeacher, setCreatingTeacher] = useState(false);
+  const [linkingTeacher, setLinkingTeacher] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState(false);
 
   useEffect(() => {
     // Check if PIN is in sessionStorage
@@ -256,6 +271,127 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     setTeacherPin("");
     setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
     setObsTeacherPin("");
+  };
+
+  const handleCreateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError("");
+
+    const trimmedName = newTeacherName.trim();
+    if (trimmedName.length < 3) {
+      setProfileError("Ingresa tu nombre y apellido (mínimo 3 letras).");
+      return;
+    }
+
+    if (!/^\d{4}$/.test(newTeacherPin)) {
+      setProfileError("El PIN debe tener exactamente 4 números.");
+      return;
+    }
+
+    if (newTeacherPin !== newTeacherPinConfirm) {
+      setProfileError("Los dos PIN ingresados no coinciden.");
+      return;
+    }
+
+    setCreatingTeacher(true);
+    try {
+      const payload: Omit<Teacher, "id"> = {
+        name: trimmedName,
+        pin: newTeacherPin,
+        active: true
+      };
+
+      let newId = "";
+      // 1. Try Firestore direct collection
+      try {
+        const docRef = await addDoc(collection(db, "teachers"), payload);
+        newId = docRef.id;
+      } catch (err) {
+        console.warn("Could not save teacher directly to teachers collection, using fallback:", err);
+      }
+
+      if (!newId) {
+        newId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      }
+
+      const newTeacher: Teacher = {
+        id: newId,
+        ...payload
+      };
+
+      // 2. Save to fallback in courses collection
+      try {
+        const fallbackSnap = await getDoc(doc(db, "courses", "_system_teachers"));
+        const currentList: Teacher[] = fallbackSnap.exists() && Array.isArray(fallbackSnap.data().list)
+          ? fallbackSnap.data().list
+          : [];
+        const updatedList = [...currentList.filter(t => t.id !== newId), newTeacher];
+        await setDoc(doc(db, "courses", "_system_teachers"), {
+          list: updatedList,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (fbErr) {
+        console.warn("Could not write to courses fallback:", fbErr);
+      }
+
+      // 3. Update in-memory state
+      const updatedTeachers = [...teachers.filter(t => t.id !== newId), newTeacher].sort((a, b) => 
+        a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+      );
+      setTeachers(updatedTeachers);
+
+      // 4. Remember on this device
+      if (typeof window !== "undefined") {
+        localStorage.setItem("bili_teacher_id", newTeacher.id);
+        localStorage.setItem("bili_teacher_name", newTeacher.name);
+      }
+      setSavedTeacher(newTeacher);
+      setSelectedTeacherId(newTeacher.id);
+      setObsTeacherId(newTeacher.id);
+
+      setProfileSuccess(true);
+      setTimeout(() => {
+        setShowProfileModal(false);
+        setProfileSuccess(false);
+        setNewTeacherName("");
+        setNewTeacherPin("");
+        setNewTeacherPinConfirm("");
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      setProfileError("Error al registrar el perfil. Intenta nuevamente.");
+    } finally {
+      setCreatingTeacher(false);
+    }
+  };
+
+  const handleLinkProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError("");
+    const teacher = teachers.find(t => t.id === linkTeacherId);
+    if (!teacher) {
+      setProfileError("Selecciona tu nombre de la lista.");
+      return;
+    }
+    if (linkTeacherPin.trim() !== teacher.pin) {
+      setProfileError("El PIN ingresado es incorrecto.");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bili_teacher_id", teacher.id);
+      localStorage.setItem("bili_teacher_name", teacher.name);
+    }
+    setSavedTeacher(teacher);
+    setSelectedTeacherId(teacher.id);
+    setObsTeacherId(teacher.id);
+
+    setProfileSuccess(true);
+    setTimeout(() => {
+      setShowProfileModal(false);
+      setProfileSuccess(false);
+      setLinkTeacherPin("");
+    }, 1000);
   };
 
   const handlePinSubmit = (e: React.FormEvent) => {
@@ -586,7 +722,7 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
               <p className="text-xs text-gray-500 font-medium">Turno {course.shift} • {dayOfWeek}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
-              {savedTeacher && (
+              {savedTeacher ? (
                 <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-full text-xs font-semibold shadow-2xs">
                   <GraduationCap className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                   <span className="truncate max-w-[120px] sm:max-w-[200px]">Prof. {savedTeacher.name}</span>
@@ -599,6 +735,19 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                     (Cambiar)
                   </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileModal(true);
+                    setProfileTab("create");
+                    setProfileError("");
+                  }}
+                  className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded-full shadow-2xs transition-all active:scale-95 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Soy Docente</span>
+                </button>
               )}
               <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs sm:text-sm font-semibold whitespace-nowrap">
                 {new Date().toLocaleDateString("es-AR", { day: 'numeric', month: 'short' })}
@@ -628,6 +777,31 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
           </div>
         </div>
       </div>
+
+      {/* Teacher Onboarding Banner if not identified */}
+      {!savedTeacher && (
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-b border-blue-200/80 shadow-2xs">
+          <div className="max-w-4xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-blue-950">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>
+                <strong>¿Sos docente de este curso?</strong> Creá tu perfil con tu propio PIN para que tu celular recuerde quién sos y firmes con 1 toque.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowProfileModal(true);
+                setProfileTab("create");
+                setProfileError("");
+              }}
+              className="self-start sm:self-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition-all shadow-2xs whitespace-nowrap cursor-pointer active:scale-95"
+            >
+              Crear mi Perfil
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="p-4 max-w-4xl mx-auto space-y-6">
         
@@ -1009,14 +1183,46 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                     )}
                   </>
                 ) : teachers.length === 0 ? (
-                  <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200">
-                    Aún no hay docentes registrados con PIN en el sistema. Puedes darlos de alta desde el panel de preceptoría.
+                  <div className="p-4 bg-blue-50 text-blue-950 text-xs rounded-xl border border-blue-200 text-center space-y-2.5">
+                    <p className="font-bold text-sm text-blue-900">¿Sos docente nuevo?</p>
+                    <p className="text-blue-700">Creá tu perfil acá con tu propio PIN en 10 segundos.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSigningHourIndex(null);
+                        setShowProfileModal(true);
+                        setProfileTab("create");
+                        setProfileError("");
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      Crear mi Perfil de Docente
+                    </button>
                   </div>
                 ) : (
                   <>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="font-bold text-xs text-blue-950 block">¿No estás en la lista?</span>
+                        <span className="text-[11px] text-blue-700 block">Creá tu perfil con tu propio PIN</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSigningHourIndex(null);
+                          setShowProfileModal(true);
+                          setProfileTab("create");
+                          setProfileError("");
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        Crear Perfil
+                      </button>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                        Selecciona tu Nombre:
+                        O selecciona tu nombre existente:
                       </label>
                       <select
                         value={selectedTeacherId}
@@ -1174,14 +1380,46 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                     </button>
                   </div>
                 ) : teachers.length === 0 ? (
-                  <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200">
-                    Aún no hay docentes registrados en el sistema.
+                  <div className="p-4 bg-blue-50 text-blue-950 text-xs rounded-xl border border-blue-200 text-center space-y-2.5">
+                    <p className="font-bold text-sm text-blue-900">¿Sos docente nuevo?</p>
+                    <p className="text-blue-700">Creá tu perfil acá con tu propio PIN en 10 segundos.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setObsModalStudent(null);
+                        setShowProfileModal(true);
+                        setProfileTab("create");
+                        setProfileError("");
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      Crear mi Perfil de Docente
+                    </button>
                   </div>
                 ) : (
                   <>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="font-bold text-xs text-blue-950 block">¿No estás en la lista?</span>
+                        <span className="text-[11px] text-blue-700 block">Creá tu perfil con tu propio PIN</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setObsModalStudent(null);
+                          setShowProfileModal(true);
+                          setProfileTab("create");
+                          setProfileError("");
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        Crear Perfil
+                      </button>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                        Docente que registra la observación:
+                        O selecciona tu nombre existente:
                       </label>
                       <select
                         value={obsTeacherId}
@@ -1270,6 +1508,215 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                   </button>
                 </div>
               </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==============================================================
+          DOCENTE: CREAR O VINCULAR PERFIL MODAL
+         ============================================================== */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <GraduationCap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 leading-tight">
+                    Perfil de Docente
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    Tu celular recordará quién sos
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowProfileModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {profileSuccess ? (
+              <div className="py-8 text-center text-emerald-600 space-y-2">
+                <CheckCircle2 className="w-16 h-16 mx-auto animate-bounce" />
+                <h4 className="text-lg font-bold text-gray-900">¡Perfil Configurado!</h4>
+                <p className="text-xs text-gray-500">Este celular ya recuerda tu identidad para firmar al instante.</p>
+              </div>
+            ) : (
+              <div>
+                {/* Tabs */}
+                <div className="flex bg-gray-100 p-1 rounded-xl mb-4 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => { setProfileTab("create"); setProfileError(""); }}
+                    className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      profileTab === "create" 
+                        ? "bg-white text-blue-700 shadow-xs font-bold" 
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Crear mi Perfil
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setProfileTab("link"); setProfileError(""); }}
+                    className={`flex-1 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      profileTab === "link" 
+                        ? "bg-white text-blue-700 shadow-xs font-bold" 
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Ya estoy en la lista
+                  </button>
+                </div>
+
+                {profileTab === "create" ? (
+                  <form onSubmit={handleCreateProfile} className="space-y-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                        Tu Nombre y Apellido:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Martín González"
+                        value={newTeacherName}
+                        onChange={e => setNewTeacherName(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Así figurará tu firma oficial en las actas.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                        Elige tu PIN personal (4 dígitos):
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        required
+                        placeholder="••••"
+                        value={newTeacherPin}
+                        onChange={e => setNewTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Este PIN es tuyo para validar tu identidad.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                        Confirmar tu PIN:
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        required
+                        placeholder="••••"
+                        value={newTeacherPinConfirm}
+                        onChange={e => setNewTeacherPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {profileError && (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl text-center">
+                        {profileError}
+                      </div>
+                    )}
+
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileModal(false)}
+                        className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-xs hover:bg-gray-50 cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={creatingTeacher}
+                        className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        {creatingTeacher ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        ) : (
+                          "Crear Perfil"
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleLinkProfile} className="space-y-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                        Selecciona tu Nombre:
+                      </label>
+                      <select
+                        value={linkTeacherId}
+                        onChange={e => setLinkTeacherId(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">-- Elige tu nombre --</option>
+                        {teachers.map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
+                        Tu PIN actual (4 dígitos):
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        required
+                        placeholder="••••"
+                        value={linkTeacherPin}
+                        onChange={e => setLinkTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {profileError && (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl text-center">
+                        {profileError}
+                      </div>
+                    )}
+
+                    <div className="pt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileModal(false)}
+                        className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-xs hover:bg-gray-50 cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={linkingTeacher || !linkTeacherId}
+                        className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        Vincular Celular
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
           </div>
         </div>
