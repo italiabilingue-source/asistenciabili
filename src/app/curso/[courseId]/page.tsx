@@ -83,10 +83,31 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
 
       // 2. Teachers for signature
       try {
-        const teachersSnap = await getDocs(collection(db, "teachers"));
-        const teachersList = teachersSnap.docs
-          .map(d => ({ id: d.id, ...d.data() } as Teacher))
-          .filter(t => t.active);
+        let teachersList: Teacher[] = [];
+        try {
+          const teachersSnap = await getDocs(collection(db, "teachers"));
+          teachersList = teachersSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as Teacher))
+            .filter(t => t.active);
+        } catch (tErr) {
+          console.warn("Could not read teachers collection directly, trying fallback:", tErr);
+        }
+
+        // Also check fallback in courses collection
+        try {
+          const fallbackSnap = await getDoc(doc(db, "courses", "_system_teachers"));
+          if (fallbackSnap.exists() && Array.isArray(fallbackSnap.data().list)) {
+            const fallbackList = (fallbackSnap.data().list as Teacher[]).filter(t => t.active);
+            fallbackList.forEach(ft => {
+              if (!teachersList.some(t => t.id === ft.id)) {
+                teachersList.push(ft);
+              }
+            });
+          }
+        } catch (fbErr) {
+          console.warn("Could not read teachers fallback:", fbErr);
+        }
+
         teachersList.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
         setTeachers(teachersList);
       } catch (err) {

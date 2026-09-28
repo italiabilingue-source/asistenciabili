@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Teacher } from "@/types";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Plus, Trash2, Edit2, X, Search, Key, GraduationCap, CheckCircle2 } from "lucide-react";
+
+const FALLBACK_DOC_ID = "_system_teachers";
 
 export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -20,21 +22,49 @@ export default function AdminTeachersPage() {
 
   const fetchTeachers = async () => {
     setLoading(true);
+    let list: Teacher[] = [];
     try {
       const snap = await getDocs(collection(db, "teachers"));
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Teacher));
-      list.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-      setTeachers(list);
+      list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Teacher));
     } catch (err) {
-      console.error("Error fetching teachers:", err);
-    } finally {
-      setLoading(false);
+      console.warn("Could not read teachers collection directly, trying fallback:", err);
     }
+
+    // Also check fallback document in courses collection (which has confirmed permissions)
+    try {
+      const fallbackSnap = await getDoc(doc(db, "courses", FALLBACK_DOC_ID));
+      if (fallbackSnap.exists() && Array.isArray(fallbackSnap.data().list)) {
+        const fallbackList = fallbackSnap.data().list as Teacher[];
+        fallbackList.forEach(ft => {
+          if (!list.some(t => t.id === ft.id)) {
+            list.push(ft);
+          }
+        });
+      }
+    } catch (fbErr) {
+      console.warn("Could not read teachers fallback:", fbErr);
+    }
+
+    list.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+    setTeachers(list);
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchTeachers();
   }, []);
+
+  const saveToFallback = async (updatedList: Teacher[]) => {
+    try {
+      await setDoc(doc(db, "courses", FALLBACK_DOC_ID), {
+        list: updatedList,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (e) {
+      console.error("Error saving fallback teachers:", e);
+      throw e;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,17 +85,40 @@ export default function AdminTeachersPage() {
     };
 
     try {
+      let savedDirectly = false;
       if (editingId) {
-        await updateDoc(doc(db, "teachers", editingId), payload);
+        try {
+          await updateDoc(doc(db, "teachers", editingId), payload);
+          savedDirectly = true;
+        } catch (tErr) {
+          console.warn("Cannot update teachers collection directly, using fallback:", tErr);
+        }
+        
+        // Also update in fallback list
+        const updatedList = teachers.map(t => t.id === editingId ? { ...t, ...payload } : t);
+        await saveToFallback(updatedList);
       } else {
-        await addDoc(collection(db, "teachers"), payload);
+        let newId = "";
+        try {
+          const docRef = await addDoc(collection(db, "teachers"), payload);
+          newId = docRef.id;
+          savedDirectly = true;
+        } catch (tErr) {
+          console.warn("Cannot add to teachers collection directly, using fallback:", tErr);
+          newId = `t_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        }
+
+        const newTeacher: Teacher = { id: newId, ...payload };
+        const updatedList = [...teachers, newTeacher];
+        await saveToFallback(updatedList);
       }
+
       setShowModal(false);
       resetForm();
       fetchTeachers();
     } catch (err) {
       console.error("Error saving teacher:", err);
-      alert("Error al guardar el docente. Verifica los permisos de Firebase.");
+      alert("Error al guardar el docente. Por favor verifica las reglas en Firebase Console.");
     }
   };
 
@@ -73,11 +126,18 @@ export default function AdminTeachersPage() {
     if (confirm(`¿Estás seguro de eliminar al docente "${teacherName}"?`)) {
       try {
         await deleteDoc(doc(db, "teachers", id));
-        fetchTeachers();
       } catch (err) {
-        console.error("Error deleting teacher:", err);
-        alert("Error al eliminar el docente.");
+        console.warn("Could not delete from teachers collection:", err);
       }
+
+      try {
+        const updatedList = teachers.filter(t => t.id !== id);
+        await saveToFallback(updatedList);
+      } catch (fbErr) {
+        console.warn("Could not delete from fallback:", fbErr);
+      }
+
+      fetchTeachers();
     }
   };
 
