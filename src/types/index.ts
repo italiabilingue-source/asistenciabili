@@ -15,6 +15,14 @@ export interface Student {
 
 export type AttendanceStatus = "presente" | "ausente" | "tardanza" | "retirado";
 
+export interface StudentObservation {
+  id: string;
+  text: string;
+  author: string; // e.g. "Preceptoría" or "Prof. Juan Pérez"
+  authorRole?: "preceptor" | "docente";
+  timestamp: number;
+}
+
 export interface AttendanceRecord {
   studentId: string;
   status: AttendanceStatus;
@@ -22,6 +30,8 @@ export interface AttendanceRecord {
   reason?: string; // Motivo de la ausencia, tardanza o retirada
   returnsLater?: boolean; // ¿Vuelve más tarde? (para retirados)
   returnTime?: string; // Hora estimada o aclaración de regreso si vuelve más tarde
+  observation?: string; // Observación cargada por preceptoría
+  observationsList?: StudentObservation[]; // Historial de observaciones (preceptores y docentes)
 }
 
 export interface DailyAttendance {

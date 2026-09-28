@@ -125,6 +125,28 @@ export default function AdminActasPage() {
     .filter(r => r.status === "retirado")
     .sort(sortByName);
 
+  // Collect all observations (from preceptor and teachers)
+  const allObservations: Array<{ studentName: string; text: string; author: string }> = [];
+  Object.values(records).sort(sortByName).forEach(r => {
+    const name = r.studentName || `Alumno ${r.studentId}`;
+    if (r.observation && r.observation.trim()) {
+      allObservations.push({
+        studentName: name,
+        text: r.observation.trim(),
+        author: "Preceptoría"
+      });
+    }
+    if (r.observationsList && r.observationsList.length > 0) {
+      r.observationsList.forEach(obs => {
+        allObservations.push({
+          studentName: name,
+          text: obs.text,
+          author: obs.author
+        });
+      });
+    }
+  });
+
   const presentsCount = students.length - absents.length;
 
   const signatures = acta?.signatures || {};
@@ -260,7 +282,7 @@ export default function AdminActasPage() {
                     <th className="border border-black p-2 w-56">Firma Profesor</th>
                     <th className="border border-black p-2 text-left">Alumnos Ausentes</th>
                     <th className="border border-black p-2 text-left w-48">Inasistencia Justificada / Motivo</th>
-                    <th className="border border-black p-2 text-left w-52">Observaciones (Tardanzas / Retiros)</th>
+                    <th className="border border-black p-2 text-left w-56">Observaciones y Novedades</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,7 +359,7 @@ export default function AdminActasPage() {
                             ) : null}
                           </td>
 
-                          {/* Observaciones (Tardanzas y Retiros) */}
+                          {/* Observaciones (Tardanzas, Retiros y Novedades) */}
                           <td className="border border-black p-1.5 text-[11px] leading-tight">
                             {/* Render withdrawals and lates on early rows */}
                             {idx === 0 && lates.length > 0 && (
@@ -353,6 +375,14 @@ export default function AdminActasPage() {
                                 {withdrawn.map(w => 
                                   `${w.studentName || w.studentId} - ${w.returnsLater ? `Vuelve${w.returnTime ? ` (${w.returnTime})` : ""}` : "No vuelve"}${w.reason ? ` [${w.reason}]` : ""}`
                                 ).join("; ")}
+                              </div>
+                            )}
+
+                            {idx === ((lates.length > 0 ? 1 : 0) + (withdrawn.length > 0 ? 1 : 0)) && allObservations.length > 0 && (
+                              <div className="text-blue-950">
+                                <span className="font-bold underline">Novedades alumnos:</span>{" "}
+                                {allObservations.slice(0, 2).map(o => `${o.studentName}: ${o.text}`).join("; ")}
+                                {allObservations.length > 2 && " (ver detalle abajo)"}
                               </div>
                             )}
                           </td>
@@ -375,6 +405,24 @@ export default function AdminActasPage() {
                     <div key={i} className="flex justify-between border-b border-gray-200 py-0.5">
                       <span className="font-semibold">{a.studentName}</span>
                       <span className="text-gray-600">{a.reason || a.note || "Sin justificar"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Observaciones y Novedades de Preceptoría y Profesores */}
+            {allObservations.length > 0 && (
+              <div className="border border-black p-2.5 mb-4 text-xs bg-gray-50/40">
+                <span className="font-bold uppercase text-gray-900 block mb-1.5 border-b border-gray-300 pb-1">
+                  Observaciones y Novedades de la Jornada (Preceptoría / Docentes):
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                  {allObservations.map((obs, i) => (
+                    <div key={i} className="text-[11px] leading-tight py-0.5 border-b border-gray-100 last:border-b-0">
+                      <span className="font-bold text-gray-900">• {obs.studentName}: </span>
+                      <span className="text-gray-800">{obs.text} </span>
+                      <span className="text-gray-500 italic text-[10px]">({obs.author})</span>
                     </div>
                   ))}
                 </div>

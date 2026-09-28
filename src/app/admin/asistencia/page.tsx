@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Course, Student, DailyAttendance, AttendanceRecord, AttendanceStatus } from "@/types";
-import { Check, X, Clock, Save, Plus, LogOut, Users, AlertCircle, ArrowRightLeft, Sparkles, Printer, FileSpreadsheet } from "lucide-react";
+import { Check, X, Clock, Save, Plus, LogOut, Users, AlertCircle, ArrowRightLeft, Sparkles, Printer, FileSpreadsheet, MessageSquare } from "lucide-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import Link from "next/link";
 
@@ -39,6 +39,7 @@ export default function AdminAttendancePage() {
   
   // records state maps studentId -> AttendanceRecord
   const [records, setRecords] = useState<Record<string, AttendanceRecord>>({});
+  const [openObsStudentIds, setOpenObsStudentIds] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -94,7 +95,9 @@ export default function AdminAttendancePage() {
               reason: loadedRecords[s.id].reason ?? (loadedRecords[s.id].note || ""),
               returnsLater: loadedRecords[s.id].returnsLater,
               returnTime: loadedRecords[s.id].returnTime || "",
-              note: loadedRecords[s.id].note || ""
+              note: loadedRecords[s.id].note || "",
+              observation: loadedRecords[s.id].observation || "",
+              observationsList: loadedRecords[s.id].observationsList || []
             };
           } else {
             mergedRecords[s.id] = { studentId: s.id, status: "presente" };
@@ -137,6 +140,16 @@ export default function AdminAttendancePage() {
       [studentId]: {
         ...(prev[studentId] || { studentId, status: "presente" }),
         reason
+      }
+    }));
+  };
+
+  const updateObservation = (studentId: string, observation: string) => {
+    setRecords(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || { studentId, status: "presente" }),
+        observation
       }
     }));
   };
@@ -193,6 +206,8 @@ export default function AdminAttendancePage() {
           parts.push("No vuelve más tarde");
         }
         computedNote = parts.join(" | ");
+      } else if (rec.status === "presente" && rec.observation?.trim()) {
+        computedNote = `Obs: ${rec.observation.trim()}`;
       }
 
       const cleanRecord: Record<string, any> = {
@@ -204,6 +219,14 @@ export default function AdminAttendancePage() {
 
       if (rec.reason && rec.reason.trim()) {
         cleanRecord.reason = rec.reason.trim();
+      }
+
+      if (rec.observation && rec.observation.trim()) {
+        cleanRecord.observation = rec.observation.trim();
+      }
+
+      if (rec.observationsList && rec.observationsList.length > 0) {
+        cleanRecord.observationsList = rec.observationsList;
       }
 
       if (rec.status === "retirado") {
@@ -431,6 +454,49 @@ export default function AdminAttendancePage() {
                       </div>
                     </div>
 
+                    {/* Preceptor observation section for Presente students */}
+                    {isPresent && (
+                      <div className="mt-2.5 ml-0 sm:ml-9">
+                        {(!rec.observation && !openObsStudentIds[student.id]) ? (
+                          <button
+                            type="button"
+                            onClick={() => setOpenObsStudentIds(prev => ({ ...prev, [student.id]: true }))}
+                            className="inline-flex items-center text-xs font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                            + Agregar Observación (Preceptoría)
+                          </button>
+                        ) : (
+                          <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1.5 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-emerald-900 uppercase tracking-wide flex items-center gap-1.5">
+                                <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+                                Observación de Preceptoría (Alumno Presente):
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateObservation(student.id, "");
+                                  setOpenObsStudentIds(prev => ({ ...prev, [student.id]: false }));
+                                }}
+                                className="text-xs text-gray-400 hover:text-gray-600 p-0.5"
+                                title="Borrar y cerrar"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Ej: Justificó uniforme, retirará material al final, citado por dirección..."
+                              value={rec.observation || ""}
+                              onChange={e => updateObservation(student.id, e.target.value)}
+                              className="w-full bg-white border border-emerald-300 text-gray-900 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Detailed input section when not present */}
                     {isAbsent && (
                       <div className="mt-3 ml-0 sm:ml-9 p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
@@ -578,6 +644,29 @@ export default function AdminAttendancePage() {
                               />
                             </div>
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Teacher observations audit trail (if any) */}
+                    {rec.observationsList && rec.observationsList.length > 0 && (
+                      <div className="mt-3 ml-0 sm:ml-9 p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
+                        <div className="text-xs font-bold text-blue-900 uppercase tracking-wide flex items-center gap-1.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-blue-700" />
+                          Observaciones cargadas por Docentes ({rec.observationsList.length}):
+                        </div>
+                        <div className="space-y-1.5">
+                          {rec.observationsList.map((obs) => (
+                            <div key={obs.id} className="bg-white border border-blue-100 rounded-lg p-2 text-xs text-gray-800 shadow-2xs">
+                              <div className="flex items-center justify-between font-semibold text-blue-900 text-[11px] mb-0.5">
+                                <span>{obs.author}</span>
+                                <span className="text-gray-400 font-normal">
+                                  {new Date(obs.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs
+                                </span>
+                              </div>
+                              <p className="text-gray-700">{obs.text}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

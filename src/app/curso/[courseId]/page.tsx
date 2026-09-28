@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useAttendance } from "@/lib/hooks/useAttendance";
-import { AttendanceRecord, Course, Teacher, DailyActa, HourlySignature } from "@/types";
+import { AttendanceRecord, Course, Teacher, DailyActa, HourlySignature, StudentObservation } from "@/types";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { 
@@ -19,7 +19,9 @@ import {
   PenTool, 
   Key, 
   Check, 
-  ShieldCheck 
+  ShieldCheck,
+  MessageSquare,
+  MessageSquarePlus
 } from "lucide-react";
 import { getSubjectsForCourseAndDate, getDayOfWeekFromDate, DEFAULT_MODULE_TIMES } from "@/lib/scheduleHelper";
 
@@ -48,6 +50,15 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   const [signingError, setSigningError] = useState("");
   const [signingSuccess, setSigningSuccess] = useState(false);
   const [savingSignature, setSavingSignature] = useState(false);
+
+  // Teacher observation modal state
+  const [obsModalStudent, setObsModalStudent] = useState<(AttendanceRecord & { studentName?: string }) | null>(null);
+  const [obsTeacherId, setObsTeacherId] = useState("");
+  const [obsTeacherPin, setObsTeacherPin] = useState("");
+  const [obsText, setObsText] = useState("");
+  const [obsError, setObsError] = useState("");
+  const [obsSuccess, setObsSuccess] = useState(false);
+  const [savingObs, setSavingObs] = useState(false);
 
   useEffect(() => {
     // Check if PIN is in sessionStorage
@@ -218,6 +229,114 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     }
   };
 
+  const openObsModal = (student: AttendanceRecord & { studentName?: string }) => {
+    setObsModalStudent(student);
+    setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
+    setObsTeacherPin("");
+    setObsText("");
+    setObsError("");
+    setObsSuccess(false);
+  };
+
+  const handleSaveObservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!obsModalStudent) return;
+
+    const teacher = teachers.find(t => t.id === obsTeacherId);
+    if (!teacher) {
+      setObsError("Selecciona un docente válido.");
+      return;
+    }
+
+    if (obsTeacherPin.trim() !== teacher.pin) {
+      setObsError("El PIN ingresado es incorrecto.");
+      return;
+    }
+
+    if (!obsText.trim()) {
+      setObsError("Escribe el texto de la observación.");
+      return;
+    }
+
+    setSavingObs(true);
+    setObsError("");
+
+    try {
+      const docId = `${courseId}_${today}`;
+      const docRef = doc(db, "daily_attendance", docId);
+      const snap = await getDoc(docRef);
+
+      const newObs: StudentObservation = {
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        text: obsText.trim(),
+        author: `Prof. ${teacher.name}`,
+        authorRole: "docente",
+        timestamp: Date.now()
+      };
+
+      const existingData = snap.exists() ? snap.data() : { courseId, date: today, updatedAt: Date.now(), records: {} };
+      const currentRecords = existingData.records || {};
+      const targetRec = currentRecords[obsModalStudent.studentId] || {
+        studentId: obsModalStudent.studentId,
+        status: obsModalStudent.status || "presente",
+        studentName: obsModalStudent.studentName || `Alumno ${obsModalStudent.studentId}`
+      };
+
+      const updatedList = [...(targetRec.observationsList || []), newObs];
+
+      await setDoc(docRef, {
+        records: {
+          ...currentRecords,
+          [obsModalStudent.studentId]: {
+            ...targetRec,
+            observationsList: updatedList
+          }
+        },
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      setObsSuccess(true);
+      setTimeout(() => {
+        setObsModalStudent(null);
+        setObsSuccess(false);
+      }, 1000);
+    } catch (err) {
+      console.error("Error saving observation:", err);
+      setObsError("Error al guardar la observación. Intenta nuevamente.");
+    } finally {
+      setSavingObs(false);
+    }
+  };
+
+  const renderStudentObservations = (student: AttendanceRecord & { studentName?: string }) => {
+    const hasPreceptorObs = !!student.observation;
+    const teacherObs = student.observationsList || [];
+
+    if (!hasPreceptorObs && teacherObs.length === 0) return null;
+
+    return (
+      <div className="mt-2 space-y-1.5 w-full">
+        {hasPreceptorObs && (
+          <div className="text-xs bg-emerald-50/90 border border-emerald-200 text-emerald-950 rounded-lg p-2 flex items-start gap-1.5">
+            <span className="font-bold text-emerald-800 shrink-0">Preceptoría:</span>
+            <span>{student.observation}</span>
+          </div>
+        )}
+        {teacherObs.map(obs => (
+          <div key={obs.id} className="text-xs bg-blue-50/90 border border-blue-200 text-blue-950 rounded-lg p-2">
+            <div className="flex items-center justify-between font-bold text-blue-900 text-[11px] mb-0.5">
+              <span>{obs.author}</span>
+              <span className="font-normal text-gray-500">
+                {new Date(obs.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs
+              </span>
+            </div>
+            <p className="text-gray-800">{obs.text}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading || !course) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-900">
@@ -343,20 +462,34 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                 </h2>
                 <div className="grid grid-cols-1 gap-3">
                   {absents.map((student, idx) => (
-                    <div key={idx} className="bg-red-50 border border-red-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
-                      <div>
-                        <span className="font-bold text-red-950 text-base sm:text-lg block">
-                          {student.studentName || `Alumno ${student.studentId}`}
-                        </span>
-                        {(student.reason || student.note) && (
-                          <span className="text-sm text-red-800 font-medium block mt-0.5">
-                            {student.reason ? `Motivo: ${student.reason}` : student.note}
+                    <div key={idx} className="bg-red-50 border border-red-200 p-4 rounded-xl flex flex-col gap-2 shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-red-950 text-base sm:text-lg block">
+                            {student.studentName || `Alumno ${student.studentId}`}
                           </span>
-                        )}
+                          {(student.reason || student.note) && (
+                            <span className="text-sm text-red-800 font-medium block mt-0.5">
+                              {student.reason ? `Motivo: ${student.reason}` : student.note}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => openObsModal(student)}
+                            className="inline-flex items-center text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-lg transition-all shadow-2xs active:scale-95"
+                            title="Agregar observación del profesor"
+                          >
+                            <MessageSquarePlus className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                            + Observación
+                          </button>
+                          <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                            AUSENTE
+                          </span>
+                        </div>
                       </div>
-                      <span className="self-start sm:self-auto bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
-                        AUSENTE
-                      </span>
+                      {renderStudentObservations(student)}
                     </div>
                   ))}
                 </div>
@@ -372,20 +505,34 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                 </h2>
                 <div className="grid grid-cols-1 gap-3">
                   {lates.map((student, idx) => (
-                    <div key={idx} className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
-                      <div>
-                        <span className="font-bold text-amber-950 text-base sm:text-lg block">
-                          {student.studentName || `Alumno ${student.studentId}`}
-                        </span>
-                        {(student.reason || student.note) && (
-                          <span className="text-sm text-amber-800 font-medium block mt-0.5">
-                            {student.reason ? `Motivo: ${student.reason}` : student.note}
+                    <div key={idx} className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex flex-col gap-2 shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-amber-950 text-base sm:text-lg block">
+                            {student.studentName || `Alumno ${student.studentId}`}
                           </span>
-                        )}
+                          {(student.reason || student.note) && (
+                            <span className="text-sm text-amber-800 font-medium block mt-0.5">
+                              {student.reason ? `Motivo: ${student.reason}` : student.note}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={() => openObsModal(student)}
+                            className="inline-flex items-center text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-lg transition-all shadow-2xs active:scale-95"
+                            title="Agregar observación del profesor"
+                          >
+                            <MessageSquarePlus className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                            + Observación
+                          </button>
+                          <span className="bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                            TARDANZA
+                          </span>
+                        </div>
                       </div>
-                      <span className="self-start sm:self-auto bg-amber-500 text-white text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
-                        TARDANZA
-                      </span>
+                      {renderStudentObservations(student)}
                     </div>
                   ))}
                 </div>
@@ -409,6 +556,15 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                             {student.studentName || `Alumno ${student.studentId}`}
                           </span>
                           <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openObsModal(student)}
+                              className="inline-flex items-center text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-lg transition-all shadow-2xs active:scale-95"
+                              title="Agregar observación del profesor"
+                            >
+                              <MessageSquarePlus className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                              + Observación
+                            </button>
                             {returns === true ? (
                               <span className="bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold px-2.5 py-1 rounded-md flex items-center">
                                 <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />
@@ -429,6 +585,7 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                             {student.reason ? `Motivo: ${student.reason}` : student.note}
                           </span>
                         )}
+                        {renderStudentObservations(student)}
                       </div>
                     );
                   })}
@@ -453,9 +610,23 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                 {showPresent && (
                   <div className="mt-2 bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-sm">
                     {presents.map((student, idx) => (
-                      <div key={idx} className="p-3 px-4 text-gray-700 text-sm font-medium flex items-center justify-between">
-                        <span>{student.studentName || `Alumno ${student.studentId}`}</span>
-                        <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded">Presente</span>
+                      <div key={idx} className="p-3 px-4 text-gray-700 text-sm font-medium flex flex-col gap-1.5 hover:bg-gray-50/60 transition-colors">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-gray-900">{student.studentName || `Alumno ${student.studentId}`}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded">Presente</span>
+                            <button
+                              type="button"
+                              onClick={() => openObsModal(student)}
+                              className="inline-flex items-center text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg transition-all shadow-2xs active:scale-95"
+                              title="Agregar observación del profesor"
+                            >
+                              <MessageSquarePlus className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                              + Observación
+                            </button>
+                          </div>
+                        </div>
+                        {renderStudentObservations(student)}
                       </div>
                     ))}
                   </div>
@@ -651,6 +822,126 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                       <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                     ) : (
                       "Confirmar Firma"
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==============================================================
+          TEACHER OBSERVATION MODAL WITH PIN VERIFICATION
+         ============================================================== */}
+      {obsModalStudent && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+            <div className="flex justify-between items-start mb-4 pb-3 border-b">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                  Observación de Docente
+                </h3>
+                <p className="text-xs text-gray-600 mt-0.5 font-medium">
+                  Alumno: <span className="font-bold text-gray-900">{obsModalStudent.studentName || `Alumno ${obsModalStudent.studentId}`}</span>
+                </p>
+              </div>
+              <button 
+                onClick={() => setObsModalStudent(null)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {obsSuccess ? (
+              <div className="py-8 text-center text-blue-600 space-y-2">
+                <CheckCircle2 className="w-16 h-16 mx-auto animate-bounce text-emerald-600" />
+                <h4 className="text-lg font-bold text-gray-900">¡Observación Guardada!</h4>
+                <p className="text-xs text-gray-500">Se registró la observación en el parte diario del curso.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveObservation} className="space-y-4">
+                {teachers.length === 0 ? (
+                  <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200">
+                    Aún no hay docentes registrados en el sistema.
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                      Docente que registra la observación:
+                    </label>
+                    <select
+                      value={obsTeacherId}
+                      onChange={e => setObsTeacherId(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {teachers.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                    Tu PIN de Docente (4 dígitos):
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    required
+                    value={obsTeacherPin}
+                    onChange={e => setObsTeacherPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="••••"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-2.5 text-center text-2xl font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1 text-center">
+                    Verifica tu PIN personal para firmar la observación.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                    Observación / Novedad:
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={obsText}
+                    onChange={e => setObsText(e.target.value)}
+                    placeholder="Escribe la observación sobre el alumno (ej. No trajo materiales, excelente participación, se sintió descompuesto...)"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  />
+                </div>
+
+                {obsError && (
+                  <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl text-center">
+                    {obsError}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setObsModalStudent(null)}
+                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingObs || teachers.length === 0}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {savingObs ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    ) : (
+                      "Guardar Observación"
                     )}
                   </button>
                 </div>
