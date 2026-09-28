@@ -22,9 +22,11 @@ import {
   ShieldCheck,
   MessageSquare,
   MessageSquarePlus,
-  GraduationCap
+  GraduationCap,
+  Fingerprint
 } from "lucide-react";
 import { getSubjectsForCourseAndDate, getDayOfWeekFromDate, DEFAULT_MODULE_TIMES } from "@/lib/scheduleHelper";
+import { isBiometricsAvailable, registerBiometrics, verifyBiometrics } from "@/lib/webauthn";
 
 export default function CourseAttendancePage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params);
@@ -47,6 +49,13 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   // Remembered teacher on this device
   const [savedTeacher, setSavedTeacher] = useState<Teacher | null>(null);
   const [rememberDevice, setRememberDevice] = useState(true);
+
+  // Biometrics (Fingerprint / Face ID / Phone Screen Lock)
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [biometricCredentialId, setBiometricCredentialId] = useState<string | null>(null);
+  const [isRegisteringBio, setIsRegisteringBio] = useState(false);
+  const [bioStatusMsg, setBioStatusMsg] = useState("");
 
   // Signing modal state
   const [signingHourIndex, setSigningHourIndex] = useState<number | null>(null);
@@ -174,12 +183,75 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     fetchInitData();
   }, [courseId, today, dayOfWeek]);
 
+  // Check if phone/device supports biometrics (Face ID, Touch ID, Fingerprint, Screen Lock)
+  useEffect(() => {
+    isBiometricsAvailable().then(avail => {
+      setBiometricsAvailable(avail);
+    });
+  }, []);
+
+  // Update biometric enabled state when saved teacher changes
+  useEffect(() => {
+    if (savedTeacher && typeof window !== "undefined") {
+      const enabled = localStorage.getItem(`bili_bio_enabled_${savedTeacher.id}`) === "true";
+      const credId = localStorage.getItem(`bili_bio_cred_${savedTeacher.id}`);
+      setBiometricsEnabled(enabled);
+      setBiometricCredentialId(credId);
+    } else {
+      setBiometricsEnabled(false);
+      setBiometricCredentialId(null);
+    }
+  }, [savedTeacher]);
+
+  const handleToggleBiometrics = async () => {
+    if (!savedTeacher) return;
+    setBioStatusMsg("");
+
+    if (biometricsEnabled) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(`bili_bio_enabled_${savedTeacher.id}`);
+        localStorage.removeItem(`bili_bio_cred_${savedTeacher.id}`);
+      }
+      setBiometricsEnabled(false);
+      setBiometricCredentialId(null);
+      setBioStatusMsg("Huella/Face ID desactivada en este dispositivo.");
+      setTimeout(() => setBioStatusMsg(""), 3000);
+      return;
+    }
+
+    setIsRegisteringBio(true);
+    try {
+      const credId = await registerBiometrics(savedTeacher.id, savedTeacher.name);
+      if (credId) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`bili_bio_enabled_${savedTeacher.id}`, "true");
+          localStorage.setItem(`bili_bio_cred_${savedTeacher.id}`, credId);
+        }
+        setBiometricsEnabled(true);
+        setBiometricCredentialId(credId);
+        setBioStatusMsg("¡Huella / Face ID vinculada con éxito!");
+      }
+    } catch (err: any) {
+      console.warn("Biometric enrollment failed:", err);
+      setBioStatusMsg(err.message || "No se pudo registrar la huella en este navegador.");
+    } finally {
+      setIsRegisteringBio(false);
+      setTimeout(() => setBioStatusMsg(""), 4000);
+    }
+  };
+
   const handleForgetTeacher = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("bili_teacher_id");
       localStorage.removeItem("bili_teacher_name");
+      if (savedTeacher) {
+        localStorage.removeItem(`bili_bio_enabled_${savedTeacher.id}`);
+        localStorage.removeItem(`bili_bio_cred_${savedTeacher.id}`);
+      }
     }
     setSavedTeacher(null);
+    setBiometricsEnabled(false);
+    setBiometricCredentialId(null);
     setSelectedTeacherId(teachers.length > 0 ? teachers[0].id : "");
     setTeacherPin("");
     setObsTeacherId(teachers.length > 0 ? teachers[0].id : "");
@@ -209,27 +281,12 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     setSigningSuccess(false);
   };
 
-  const handleConfirmSignature = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeSaveSignature = async (teacherToUse?: Teacher) => {
     if (signingHourIndex === null) return;
-
-    const teacher = savedTeacher || teachers.find(t => t.id === selectedTeacherId);
+    const teacher = teacherToUse || savedTeacher || teachers.find(t => t.id === selectedTeacherId);
     if (!teacher) {
       setSigningError("Selecciona un docente válido.");
       return;
-    }
-
-    // Only verify PIN if teacher is not already remembered on this device
-    if (!savedTeacher) {
-      if (teacherPin.trim() !== teacher.pin) {
-        setSigningError("El PIN ingresado es incorrecto.");
-        return;
-      }
-      if (rememberDevice && typeof window !== "undefined") {
-        localStorage.setItem("bili_teacher_id", teacher.id);
-        localStorage.setItem("bili_teacher_name", teacher.name);
-        setSavedTeacher(teacher);
-      }
     }
 
     setSavingSignature(true);
@@ -290,6 +347,50 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
     } finally {
       setSavingSignature(false);
     }
+  };
+
+  const handleConfirmSignatureWithBiometrics = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!savedTeacher) return;
+    setSigningError("");
+
+    try {
+      const verified = await verifyBiometrics(biometricCredentialId);
+      if (!verified) {
+        setSigningError("No se pudo verificar la huella o se canceló el desbloqueo.");
+        return;
+      }
+      await executeSaveSignature(savedTeacher);
+    } catch (err: any) {
+      console.warn("Biometrics error:", err);
+      setSigningError("Error de biometría. Puedes usar el botón de 1 toque directo.");
+    }
+  };
+
+  const handleConfirmSignature = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (signingHourIndex === null) return;
+
+    const teacher = savedTeacher || teachers.find(t => t.id === selectedTeacherId);
+    if (!teacher) {
+      setSigningError("Selecciona un docente válido.");
+      return;
+    }
+
+    // Only verify PIN if teacher is not already remembered on this device
+    if (!savedTeacher) {
+      if (teacherPin.trim() !== teacher.pin) {
+        setSigningError("El PIN ingresado es incorrecto.");
+        return;
+      }
+      if (rememberDevice && typeof window !== "undefined") {
+        localStorage.setItem("bili_teacher_id", teacher.id);
+        localStorage.setItem("bili_teacher_name", teacher.name);
+        setSavedTeacher(teacher);
+      }
+    }
+
+    await executeSaveSignature(teacher);
   };
 
   const openObsModal = (student: AttendanceRecord & { studentName?: string }) => {
@@ -849,27 +950,64 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
             ) : (
               <form onSubmit={handleConfirmSignature} className="space-y-4">
                 {savedTeacher ? (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-1.5">
-                    <p className="text-xs text-emerald-800 font-semibold uppercase tracking-wide">
-                      Firmando como
-                    </p>
-                    <div className="flex items-center justify-center gap-2">
-                      <GraduationCap className="w-5 h-5 text-emerald-700" />
-                      <span className="text-base font-bold text-emerald-950">
-                        {savedTeacher.name}
-                      </span>
+                  <>
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-1.5">
+                      <p className="text-xs text-emerald-800 font-semibold uppercase tracking-wide">
+                        Firmando como
+                      </p>
+                      <div className="flex items-center justify-center gap-2">
+                        <GraduationCap className="w-5 h-5 text-emerald-700" />
+                        <span className="text-base font-bold text-emerald-950">
+                          {savedTeacher.name}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-emerald-700 font-medium">
+                        Dispositivo identificado
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleForgetTeacher}
+                        className="text-xs text-gray-500 hover:text-gray-800 underline pt-1 block mx-auto cursor-pointer"
+                      >
+                        ¿No eres tú? Cambiar docente
+                      </button>
                     </div>
-                    <p className="text-[11px] text-emerald-700 font-medium">
-                      Dispositivo identificado • 1 toque para firmar
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleForgetTeacher}
-                      className="text-xs text-gray-500 hover:text-gray-800 underline pt-1 block mx-auto cursor-pointer"
-                    >
-                      ¿No eres tú? Cambiar docente
-                    </button>
-                  </div>
+
+                    {/* Biometrics Card */}
+                    {biometricsAvailable && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 text-xs text-slate-700">
+                          <Fingerprint className={`w-5 h-5 shrink-0 ${biometricsEnabled ? "text-emerald-600" : "text-slate-400"}`} />
+                          <div>
+                            <span className="font-semibold block text-slate-900 leading-tight">
+                              {biometricsEnabled ? "Huella / Face ID activa" : "Huella / Face ID del celular"}
+                            </span>
+                            <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                              {biometricsEnabled ? "Puedes firmar apoyando el dedo o la cara" : "Vincúlala para mayor seguridad y rapidez"}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isRegisteringBio}
+                          onClick={handleToggleBiometrics}
+                          className={`text-xs px-2.5 py-1.5 rounded-lg font-semibold border transition-all cursor-pointer shrink-0 ${
+                            biometricsEnabled 
+                              ? "bg-white text-slate-700 border-slate-300 hover:bg-slate-100" 
+                              : "bg-emerald-600 text-white border-transparent hover:bg-emerald-700 shadow-2xs active:scale-95"
+                          }`}
+                        >
+                          {isRegisteringBio ? "Vinculando..." : biometricsEnabled ? "Desactivar" : "Activar"}
+                        </button>
+                      </div>
+                    )}
+
+                    {bioStatusMsg && (
+                      <p className="text-xs text-center font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 p-2 rounded-lg">
+                        {bioStatusMsg}
+                      </p>
+                    )}
+                  </>
                 ) : teachers.length === 0 ? (
                   <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl border border-amber-200">
                     Aún no hay docentes registrados con PIN en el sistema. Puedes darlos de alta desde el panel de preceptoría.
@@ -932,24 +1070,52 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-2">
+                <div className="space-y-2 pt-2">
+                  {savedTeacher && biometricsEnabled ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleConfirmSignatureWithBiometrics}
+                        disabled={savingSignature}
+                        className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        {savingSignature ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        ) : (
+                          <>
+                            <Fingerprint className="w-5 h-5 text-emerald-100" />
+                            Firmar con Huella / Face ID
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingSignature}
+                        className="w-full py-2 text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors cursor-pointer text-center block"
+                      >
+                        O firmar con 1 toque sin biometría
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={savingSignature || (!savedTeacher && teachers.length === 0)}
+                      className="w-full py-3 bg-[#199A46] hover:bg-green-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
+                    >
+                      {savingSignature ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                      ) : (
+                        savedTeacher ? "Confirmar Firma (1 Toque)" : "Confirmar Firma"
+                      )}
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setSigningHourIndex(null)}
-                    className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50 cursor-pointer"
+                    className="w-full py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium text-xs hover:bg-gray-50 cursor-pointer text-center"
                   >
                     Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingSignature || (!savedTeacher && teachers.length === 0)}
-                    className="flex-1 py-2.5 bg-[#199A46] hover:bg-green-700 text-white font-bold text-sm rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center justify-center cursor-pointer active:scale-95"
-                  >
-                    {savingSignature ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    ) : (
-                      "Confirmar Firma"
-                    )}
                   </button>
                 </div>
               </form>
