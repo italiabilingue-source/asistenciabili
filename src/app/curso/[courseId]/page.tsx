@@ -49,15 +49,6 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
   const [signingSuccess, setSigningSuccess] = useState(false);
   const [savingSignature, setSavingSignature] = useState(false);
 
-  const FALLBACK_TEACHERS: Teacher[] = [
-    { id: "t1", name: "Martínez, Juan Carlos", pin: "1234", active: true },
-    { id: "t2", name: "González, Silvina", pin: "2345", active: true },
-    { id: "t3", name: "Rodríguez, Fernando", pin: "3456", active: true },
-    { id: "t4", name: "Rossi, Mariela", pin: "4567", active: true },
-    { id: "t5", name: "Albornoz, Esteban", pin: "5678", active: true },
-    { id: "t6", name: "Pérez, Luciana", pin: "6789", active: true },
-  ];
-
   useEffect(() => {
     // Check if PIN is in sessionStorage
     const storedPin = sessionStorage.getItem(`pin_${courseId}`);
@@ -86,10 +77,10 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
           .map(d => ({ id: d.id, ...d.data() } as Teacher))
           .filter(t => t.active);
         teachersList.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
-        setTeachers(teachersList.length > 0 ? teachersList : FALLBACK_TEACHERS);
+        setTeachers(teachersList);
       } catch (err) {
-        console.warn("Using fallback teachers list:", err);
-        setTeachers(FALLBACK_TEACHERS);
+        console.error("Error loading teachers:", err);
+        setTeachers([]);
       }
 
       // 3. Daily Acta (Hourly Signatures)

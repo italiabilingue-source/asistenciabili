@@ -7,15 +7,6 @@ import { Teacher } from "@/types";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { Plus, Trash2, Edit2, X, Search, Key, GraduationCap, CheckCircle2 } from "lucide-react";
 
-const INITIAL_SAMPLE_TEACHERS = [
-  { name: "Martínez, Juan Carlos", pin: "1234", active: true },
-  { name: "González, Silvina", pin: "2345", active: true },
-  { name: "Rodríguez, Fernando", pin: "3456", active: true },
-  { name: "Rossi, Mariela", pin: "4567", active: true },
-  { name: "Albornoz, Esteban", pin: "5678", active: true },
-  { name: "Pérez, Luciana", pin: "6789", active: true },
-];
-
 export default function AdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,23 +94,6 @@ export default function AdminTeachersPage() {
     setPin("");
   };
 
-  const seedSampleTeachers = async () => {
-    if (confirm("¿Cargar docentes iniciales de ejemplo para comenzar a usar la firma digital?")) {
-      setLoading(true);
-      try {
-        for (const t of INITIAL_SAMPLE_TEACHERS) {
-          await addDoc(collection(db, "teachers"), t);
-        }
-        fetchTeachers();
-      } catch (err) {
-        console.error("Error seeding sample teachers:", err);
-        alert("Error al cargar docentes de ejemplo.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
   const filteredTeachers = teachers.filter(t => 
     t.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -134,14 +108,6 @@ export default function AdminTeachersPage() {
             <p className="text-gray-500">Alta y asignación de PIN de 4 dígitos para firma de actas diarias</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {teachers.length === 0 && !loading && (
-              <button
-                onClick={seedSampleTeachers}
-                className="bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 px-4 py-2 rounded-xl font-medium text-sm transition-colors"
-              >
-                Cargar Docentes de Ejemplo
-              </button>
-            )}
             <button 
               onClick={() => { resetForm(); setShowModal(true); }}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-medium inline-flex items-center transition-colors shadow-sm"
@@ -176,10 +142,10 @@ export default function AdminTeachersPage() {
             <h3 className="text-lg font-medium text-gray-900">No hay docentes registrados</h3>
             <p className="text-gray-500 mb-6">Registra a los profesores con su PIN de 4 dígitos para que puedan firmar las horas de clase.</p>
             <button
-              onClick={seedSampleTeachers}
+              onClick={() => { resetForm(); setShowModal(true); }}
               className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-medium inline-flex items-center hover:bg-green-700 shadow-sm"
             >
-              <Plus className="w-4 h-4 mr-2" /> Cargar Docentes de Ejemplo
+              <Plus className="w-4 h-4 mr-2" /> Registrar Docente
             </button>
           </div>
         ) : (
