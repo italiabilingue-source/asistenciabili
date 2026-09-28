@@ -273,8 +273,8 @@ export default function AdminActasPage() {
             </div>
 
             {/* Main Hourly Subjects & Signatures Table */}
-            <div className="mb-4">
-              <table className="w-full border-collapse border border-black text-xs">
+            <div className="mb-4 overflow-x-auto print:overflow-x-visible">
+              <table className="w-full border-collapse border border-black text-xs min-w-[700px] print:min-w-full">
                 <thead>
                   <tr className="bg-gray-100 text-center font-black uppercase text-[11px] border-b border-black">
                     <th className="border border-black p-2 w-16">Hora</th>

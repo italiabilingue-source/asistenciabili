@@ -94,42 +94,44 @@ export default function AdminCoursesPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
-                  <th className="p-4 font-semibold">Nombre</th>
-                  <th className="p-4 font-semibold">Turno</th>
-                  <th className="p-4 font-semibold">PIN Acceso</th>
-                  <th className="p-4 font-semibold text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {courses.length === 0 && (
-                  <tr><td colSpan={4} className="p-8 text-center text-gray-500">No hay cursos registrados.</td></tr>
-                )}
-                {courses.map(course => (
-                  <tr key={course.id} className="hover:bg-gray-50">
-                    <td className="p-4 font-medium text-gray-900">{course.name}</td>
-                    <td className="p-4 text-gray-600">{course.shift}</td>
-                    <td className="p-4 text-gray-600">
-                      {course.accessPin ? (
-                        <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold">{course.accessPin}</span>
-                      ) : (
-                        <span className="text-gray-400 text-xs">Sin PIN</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right space-x-2">
-                      <button onClick={() => handleEdit(course)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(course.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[450px]">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
+                    <th className="p-4 font-semibold">Nombre</th>
+                    <th className="p-4 font-semibold">Turno</th>
+                    <th className="p-4 font-semibold">PIN Acceso</th>
+                    <th className="p-4 font-semibold text-right">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {courses.length === 0 && (
+                    <tr><td colSpan={4} className="p-8 text-center text-gray-500">No hay cursos registrados.</td></tr>
+                  )}
+                  {courses.map(course => (
+                    <tr key={course.id} className="hover:bg-gray-50">
+                      <td className="p-4 font-medium text-gray-900">{course.name}</td>
+                      <td className="p-4 text-gray-600">{course.shift}</td>
+                      <td className="p-4 text-gray-600">
+                        {course.accessPin ? (
+                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold">{course.accessPin}</span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Sin PIN</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right space-x-2">
+                        <button onClick={() => handleEdit(course)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(course.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>

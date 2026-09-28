@@ -410,46 +410,46 @@ export default function AdminAttendancePage() {
                       <div className="flex bg-gray-100/90 p-1 rounded-xl w-full lg:w-auto shadow-inner">
                         <button 
                           onClick={() => setStatus(student.id, "presente")}
-                          className={`flex-1 lg:flex-none flex items-center justify-center px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                          className={`flex-1 lg:flex-none flex items-center justify-center px-1.5 sm:px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                             isPresent 
                               ? "bg-emerald-600 text-white shadow-sm font-bold" 
                               : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
                           }`}
                         >
-                          <Check className="w-4 h-4 mr-1 sm:mr-1.5" /> Presente
+                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 shrink-0" /> Presente
                         </button>
 
                         <button 
                           onClick={() => setStatus(student.id, "ausente")}
-                          className={`flex-1 lg:flex-none flex items-center justify-center px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                          className={`flex-1 lg:flex-none flex items-center justify-center px-1.5 sm:px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                             isAbsent 
                               ? "bg-rose-600 text-white shadow-sm font-bold" 
                               : "text-gray-600 hover:text-rose-700 hover:bg-rose-50"
                           }`}
                         >
-                          <X className="w-4 h-4 mr-1 sm:mr-1.5" /> Ausente
+                          <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 shrink-0" /> Ausente
                         </button>
 
                         <button 
                           onClick={() => setStatus(student.id, "tardanza")}
-                          className={`flex-1 lg:flex-none flex items-center justify-center px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                          className={`flex-1 lg:flex-none flex items-center justify-center px-1.5 sm:px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                             isLate 
                               ? "bg-amber-500 text-white shadow-sm font-bold" 
                               : "text-gray-600 hover:text-amber-700 hover:bg-amber-50"
                           }`}
                         >
-                          <Clock className="w-4 h-4 mr-1 sm:mr-1.5" /> Tarde
+                          <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 shrink-0" /> Tarde
                         </button>
 
                         <button 
                           onClick={() => setStatus(student.id, "retirado")}
-                          className={`flex-1 lg:flex-none flex items-center justify-center px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                          className={`flex-1 lg:flex-none flex items-center justify-center px-1.5 sm:px-3 py-2 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                             isWithdrawn 
                               ? "bg-purple-600 text-white shadow-sm font-bold" 
                               : "text-gray-600 hover:text-purple-700 hover:bg-purple-50"
                           }`}
                         >
-                          <LogOut className="w-4 h-4 mr-1 sm:mr-1.5" /> Retiro
+                          <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-1.5 shrink-0" /> Retiro
                         </button>
                       </div>
                     </div>

@@ -704,15 +704,15 @@ export default function CourseAttendancePage({ params }: { params: Promise<{ cou
                       </div>
                     </div>
 
-                    <div className="self-end sm:self-auto">
+                    <div className="w-full sm:w-auto pt-1 sm:pt-0">
                       {isSigned ? (
-                        <div className="flex items-center bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
+                        <div className="w-full sm:w-auto flex items-center justify-center bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold shadow-sm">
                           <Check className="w-4 h-4 mr-1.5 text-emerald-600" /> Firmado
                         </div>
                       ) : (
                         <button
                           onClick={() => openSignModal(idx)}
-                          className="bg-[#199A46] hover:bg-green-700 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-sm hover:shadow transition-all flex items-center active:scale-95"
+                          className="w-full sm:w-auto justify-center bg-[#199A46] hover:bg-green-700 text-white font-bold text-xs sm:text-sm px-4 py-2.5 sm:py-2 rounded-xl shadow-sm hover:shadow transition-all flex items-center active:scale-95"
                         >
                           <Key className="w-3.5 h-3.5 mr-1.5" /> Firmar mi Hora
                         </button>

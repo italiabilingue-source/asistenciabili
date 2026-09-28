@@ -141,41 +141,43 @@ export default function AdminStudentsPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
-                  <th className="p-4 font-semibold">Alumno</th>
-                  <th className="p-4 font-semibold">Curso</th>
-                  <th className="p-4 font-semibold text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredStudents.length === 0 && (
-                  <tr><td colSpan={4} className="p-12 text-center text-gray-500"><Users className="w-12 h-12 mx-auto text-gray-300 mb-3" />No se encontraron alumnos.</td></tr>
-                )}
-                {filteredStudents.map(student => {
-                  const course = courses.find(c => c.id === student.courseId);
-                  return (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="p-4">
-                        <p className="font-bold text-gray-900">{student.lastName}, {student.firstName}</p>
-                      </td>
-                      <td className="p-4 text-gray-600 font-medium">
-                        {course ? course.name : "Sin asignar"}
-                      </td>
-                      <td className="p-4 text-right space-x-2">
-                        <button onClick={() => handleEdit(student)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[450px]">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
+                    <th className="p-4 font-semibold">Alumno</th>
+                    <th className="p-4 font-semibold">Curso</th>
+                    <th className="p-4 font-semibold text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredStudents.length === 0 && (
+                    <tr><td colSpan={4} className="p-12 text-center text-gray-500"><Users className="w-12 h-12 mx-auto text-gray-300 mb-3" />No se encontraron alumnos.</td></tr>
+                  )}
+                  {filteredStudents.map(student => {
+                    const course = courses.find(c => c.id === student.courseId);
+                    return (
+                      <tr key={student.id} className="hover:bg-gray-50">
+                        <td className="p-4">
+                          <p className="font-bold text-gray-900">{student.lastName}, {student.firstName}</p>
+                        </td>
+                        <td className="p-4 text-gray-600 font-medium">
+                          {course ? course.name : "Sin asignar"}
+                        </td>
+                        <td className="p-4 text-right space-x-2">
+                          <button onClick={() => handleEdit(student)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(student.id)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>

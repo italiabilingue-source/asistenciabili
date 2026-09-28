@@ -155,52 +155,54 @@ export default function AdminTeachersPage() {
                 {filteredTeachers.length} {filteredTeachers.length === 1 ? "Docente registrado" : "Docentes registrados"}
               </span>
             </div>
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
-                  <th className="p-4 pl-6 font-semibold">Apellido y Nombre</th>
-                  <th className="p-4 font-semibold">PIN de Firma</th>
-                  <th className="p-4 font-semibold">Estado</th>
-                  <th className="p-4 pr-6 text-right font-semibold">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredTeachers.map(t => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4 pl-6 font-bold text-gray-900">
-                      {t.name}
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center bg-gray-100 text-gray-800 text-xs font-mono font-bold px-2.5 py-1 rounded-md border border-gray-200">
-                        <Key className="w-3 h-3 mr-1 text-gray-500" />
-                        {t.pin}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center text-emerald-700 bg-emerald-50 text-xs font-semibold px-2 py-0.5 rounded">
-                        <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-500" /> Activo
-                      </span>
-                    </td>
-                    <td className="p-4 pr-6 text-right space-x-2">
-                      <button 
-                        onClick={() => handleEdit(t)} 
-                        className="text-gray-400 hover:text-green-600 p-1.5 transition-colors rounded-lg hover:bg-gray-100"
-                        title="Editar"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(t.id, t.name)} 
-                        className="text-gray-400 hover:text-red-600 p-1.5 transition-colors rounded-lg hover:bg-gray-100"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[500px]">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                    <th className="p-4 pl-6 font-semibold">Apellido y Nombre</th>
+                    <th className="p-4 font-semibold">PIN de Firma</th>
+                    <th className="p-4 font-semibold">Estado</th>
+                    <th className="p-4 pr-6 text-right font-semibold">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredTeachers.map(t => (
+                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 pl-6 font-bold text-gray-900">
+                        {t.name}
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex items-center bg-gray-100 text-gray-800 text-xs font-mono font-bold px-2.5 py-1 rounded-md border border-gray-200">
+                          <Key className="w-3 h-3 mr-1 text-gray-500" />
+                          {t.pin}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex items-center text-emerald-700 bg-emerald-50 text-xs font-semibold px-2 py-0.5 rounded">
+                          <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-500" /> Activo
+                        </span>
+                      </td>
+                      <td className="p-4 pr-6 text-right space-x-2">
+                        <button 
+                          onClick={() => handleEdit(t)} 
+                          className="text-gray-400 hover:text-green-600 p-1.5 transition-colors rounded-lg hover:bg-gray-100"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(t.id, t.name)} 
+                          className="text-gray-400 hover:text-red-600 p-1.5 transition-colors rounded-lg hover:bg-gray-100"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

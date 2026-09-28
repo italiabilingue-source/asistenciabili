@@ -38,48 +38,49 @@ export default function QRGeneratorPage() {
     <div className="min-h-screen bg-gray-50 p-6 md:p-12">
       <div className="max-w-5xl mx-auto print:max-w-full print:p-0">
         
-        <div className="flex justify-between items-center mb-8 print:hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 print:hidden">
           <div>
-            <Link href="/admin/asistencia" className="text-green-600 font-medium flex items-center hover:underline mb-2">
+            <Link href="/admin/asistencia" className="text-green-600 font-medium flex items-center hover:underline mb-2 text-sm">
               <ChevronLeft className="w-4 h-4 mr-1" /> Volver al panel
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Generador de Carteles QR</h1>
-            <p className="text-gray-500">Imprime estos carteles para pegar en cada aula.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Generador de Carteles QR</h1>
+            <p className="text-gray-500 text-sm">Imprime estos carteles para pegar en cada aula.</p>
           </div>
           <button 
             onClick={() => window.print()}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl font-bold flex items-center shadow-md transition-colors"
+            className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center justify-center shadow-md transition-colors text-sm"
           >
             <Printer className="w-5 h-5 mr-2" /> Imprimir Todos
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-12 print:gap-0">
+        <div className="grid grid-cols-1 gap-8 sm:gap-12 print:gap-0">
           {courses.map(course => (
-            <div key={course.id} className="bg-white border-2 border-gray-200 rounded-3xl p-12 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden print:h-screen print:border-none print:shadow-none print:rounded-none break-after-page">
+            <div key={course.id} className="bg-white border-2 border-gray-200 rounded-3xl p-6 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden print:h-screen print:border-none print:shadow-none print:rounded-none break-after-page">
               
               {/* Header Band */}
               <div className="absolute top-0 left-0 right-0 h-4 bg-[#199A46]"></div>
               
-              <div className="mb-8 flex items-center flex-col">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 mb-4 bg-white flex items-center justify-center shadow-sm">
+              <div className="mb-6 sm:mb-8 flex items-center flex-col">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-4 border-gray-100 mb-4 bg-white flex items-center justify-center shadow-sm">
                    {/* Italy Flag Colors for Logo */}
                    <div className="w-1/3 h-full bg-[#199A46]"></div>
                    <div className="w-1/3 h-full bg-white"></div>
                    <div className="w-1/3 h-full bg-[#CE2B37]"></div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-400 uppercase tracking-widest">Instituto República de Italia</h2>
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-400 uppercase tracking-widest">Instituto República de Italia</h2>
               </div>
               
-              <h1 className="text-6xl font-black text-gray-900 mb-2">{course.name}</h1>
-              <p className="text-xl text-gray-500 mb-12">Turno {course.shift}</p>
+              <h1 className="text-4xl sm:text-6xl font-black text-gray-900 mb-2">{course.name}</h1>
+              <p className="text-lg sm:text-xl text-gray-500 mb-8 sm:mb-12">Turno {course.shift}</p>
 
-              <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 mb-12">
+              <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-xl border border-gray-100 mb-8 sm:mb-12 max-w-full overflow-hidden">
                 <QRCodeSVG 
                   value={`${origin}/curso/${course.id}`} 
-                  size={300} 
+                  size={260} 
                   level="H"
                   includeMargin={false}
+                  className="max-w-full h-auto"
                 />
               </div>
 
